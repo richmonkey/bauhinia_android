@@ -11,6 +11,8 @@ import android.view.View;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.util.Date;
 
 import static android.os.SystemClock.uptimeMillis;
@@ -34,24 +36,22 @@ public class IMActivity extends Activity {
         setContentView(R.layout.main);
         mCallbackText = (TextView) findViewById(R.id.text);
 
-    /*    long now = uptimeMillis() - 10*1000;
-        long t = now + 2 * 1000;
-        Log.i(TAG, "start:" + now());
-        timer = new Timer() {
-            @Override
-            protected void fire() {
-                Log.i("imservice", "timer fire:" + now());
-            }
-        };
-        timer.setTimer(t, 2*1000);*/
 
-//        timer.resume();
-
-        testBytePacket();
+        runUnitTest();
         Log.i(TAG, "start im service");
         im = new IMService();
-        im.start();
+        im.setHost("106.186.122.158");
+        im.setPort(23000);
+        im.setUid(86013635273143L);
+        im.setPeerMessageHandler(PeerMessageHandler.getInstance());
+
+       // im.start();
     }
+    private void runUnitTest() {
+        testFile();
+        testBytePacket();
+    }
+
     private void testBytePacket() {
         byte[] buf = new byte[8];
         BytePacket.writeInt32(new Integer(10), buf, 0);
@@ -60,6 +60,21 @@ public class IMActivity extends Activity {
         long v2 = BytePacket.readInt64(buf, 0);
         assert(v1 == 10);
         assert(v2 == 1001);
+    }
+
+    private void testFile() {
+        try {
+            this.openFileOutput("test.txt", MODE_PRIVATE);
+            File dir = this.getDir("test_dir", MODE_PRIVATE);
+            File f = new File(dir, "myfile");
+            Log.i(TAG, "path:" + f.getAbsolutePath());
+            FileOutputStream out = new FileOutputStream(f);
+            String hello = "hello world";
+            out.write(hello.getBytes());
+            out.close();
+        } catch(Exception e) {
+            Log.e(TAG, "file error");
+        }
     }
 
     public static int now() {

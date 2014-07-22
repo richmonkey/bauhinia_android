@@ -4,18 +4,42 @@ import com.beetle.AsyncTCP;
 import com.beetle.TCPConnectCallback;
 import com.beetle.TCPReadCallback;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
+
 import static android.os.SystemClock.uptimeMillis;
+
+enum ConnectState {
+    STATE_UNCONNECTED,
+    STATE_CONNECTING,
+    STATE_CONNECTED,
+    STATE_CONNECTFAIL,
+}
+
+interface IMServiceObserver {
+    public void onConnectState(ConnectState state);
+    public void onPeerInputting(long uid);
+    public void onOnlineState(long uid, boolean on);
+
+    public void onPeerMessage(IMMessage msg);
+    public void onPeerMessageACK(int msgLocalID, long uid);
+    public void onPeerMessageRemoteACK(int msgLocalID, long uid);
+    public void onPeerMessageFailure(int msgLocalID, long uid);
+}
+
+interface IMPeerMessageHandler {
+    public boolean handleMessage(IMMessage msg);
+    public boolean handleMessageACK(int msgLocalID, long uid);
+    public boolean handleMessageRemoteACK(int msgLocalID, long uid);
+    public boolean handleMessageFailure(int msgLocalID, long uid);
+}
 
 /**
  * Created by houxh on 14-7-21.
  */
 public class IMService {
-    public enum ConnectState {
-        STATE_UNCONNECTED,
-        STATE_CONNECTING,
-        STATE_CONNECTED,
-        STATE_CONNECTFAIL
-    }
 
     private final String TAG = "imservice";
     private final int HEARTBEAT = 10;
@@ -26,6 +50,14 @@ public class IMService {
     private int connectFailCount = 0;
     private int seq = 0;
     private ConnectState connectState = ConnectState.STATE_UNCONNECTED;
+
+    private String host;
+    private int port;
+    private long uid;
+
+    IMPeerMessageHandler peerMessageHandler;
+    ArrayList<IMServiceObserver> observers = new ArrayList<IMServiceObserver>();
+    HashMap<Integer, IMMessage> peerMessages = new HashMap<Integer, IMMessage>();
 
     private byte[] data;
 
@@ -45,6 +77,34 @@ public class IMService {
         };
     }
 
+    public ConnectState getConnectState() {
+        return connectState;
+    }
+    public void setHost(String host) {
+        this.host = host;
+    }
+    public void setPort(int port) {
+        this.port = port;
+    }
+    public void setUid(long uid) {
+        this.uid = uid;
+    }
+
+    public void setPeerMessageHandler(IMPeerMessageHandler handler) {
+        this.peerMessageHandler = handler;
+    }
+
+    public void addObserver(IMServiceObserver ob) {
+        if (observers.contains(ob)) {
+            return;
+        }
+        observers.add(ob);
+    }
+
+    public void removeObserver(IMServiceObserver ob) {
+        observers.remove(ob);
+    }
+
     public void start() {
         this.stopped = false;
         connectTimer.setTimer(uptimeMillis());
@@ -54,9 +114,30 @@ public class IMService {
         heartbeatTimer.resume();
     }
 
+    public void stop() {
+        stopped = true;
+        heartbeatTimer.suspend();
+        connectTimer.suspend();
+        this.close();
+    }
+
+    public boolean sendPeerMessage(IMMessage im) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_IM;
+        msg.body = im;
+        if (!sendMessage(msg)) {
+            return false;
+        }
+
+        peerMessages.put(new Integer(msg.seq), im);
+        return true;
+    }
+
     private void close() {
-        this.tcp.close();
-        this.tcp = null;
+        if (this.tcp != null) {
+            this.tcp.close();
+            this.tcp = null;
+        }
         if (this.stopped) {
             return;
         }
@@ -92,7 +173,6 @@ public class IMService {
                     IMService.this.connectFailCount++;
                     IMService.this.connectState = ConnectState.STATE_CONNECTFAIL;
                     IMService.this.close();
-                    return;
                 } else {
                     Log.i(TAG, "tcp connected");
                     IMService.this.connectFailCount = 0;
@@ -108,18 +188,18 @@ public class IMService {
             public void onRead(Object tcp, byte[] data) {
                 if (data.length == 0) {
                     IMService.this.connectState = ConnectState.STATE_UNCONNECTED;
-                    IMService.this.close();
+                    IMService.this.handleClose();
                 } else {
                     boolean b = IMService.this.handleData(data);
                     if (!b) {
                         IMService.this.connectState = ConnectState.STATE_UNCONNECTED;
-                        IMService.this.close();
+                        IMService.this.handleClose();
                     }
                 }
             }
         });
 
-        this.tcp.connect("106.186.122.158", 23000);
+        this.tcp.connect(this.host, this.port);
     }
 
     private void handleAuthStatus(Message msg) {
@@ -130,10 +210,42 @@ public class IMService {
     private void handleIMMessage(Message msg) {
         IMMessage im = (IMMessage)msg.body;
         Log.d(TAG, "im message sender:" + im.sender + " receiver:" + im.receiver + " content:" + im.content);
+        if (!peerMessageHandler.handleMessage(im)) {
+            Log.i(TAG, "handle im message fail");
+            return;
+        }
+        publishPeerMessage(im);
         Message ack = new Message();
         ack.cmd = Command.MSG_ACK;
         ack.body = new Integer(msg.seq);
         sendMessage(ack);
+    }
+
+    private void handleClose() {
+        Iterator iter = peerMessages.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<Integer, IMMessage> entry = (Map.Entry<Integer, IMMessage>)iter.next();
+            IMMessage im = entry.getValue();
+            peerMessageHandler.handleMessageFailure(im.msgLocalID, im.receiver);
+            publishPeerMessageFailure(im.msgLocalID, im.receiver);
+        }
+        peerMessages.clear();
+        close();
+    }
+
+    private void handleACK(Message msg) {
+        Integer seq = (Integer)msg.body;
+        IMMessage im = peerMessages.get(seq);
+        if (im == null) {
+            return;
+        }
+
+        if (!peerMessageHandler.handleMessageACK(im.msgLocalID, im.receiver)) {
+            Log.w(TAG, "handle message ack fail");
+            return;
+        }
+        peerMessages.remove(seq);
+        publishPeerMessageACK(im.msgLocalID, im.receiver);
     }
 
     private void handleMessage(Message msg) {
@@ -187,17 +299,10 @@ public class IMService {
         return true;
     }
 
-    public void stop() {
-        stopped = true;
-        heartbeatTimer.suspend();
-        connectTimer.suspend();
-        this.close();
-    }
-
     private void sendAuth() {
         Message msg = new Message();
         msg.cmd = Command.MSG_AUTH;
-        msg.body = new Long(86013635273143L);
+        msg.body = new Long(this.uid);
         sendMessage(msg);
     }
 
@@ -208,7 +313,7 @@ public class IMService {
     }
 
     private boolean sendMessage(Message msg) {
-        if (this.tcp == null) return false;
+        if (this.tcp == null || connectState != ConnectState.STATE_CONNECTED) return false;
         this.seq++;
         msg.seq = this.seq;
         byte[] p = msg.pack();
@@ -218,5 +323,39 @@ public class IMService {
         System.arraycopy(p, 0, buf, 4, p.length);
         this.tcp.writeData(buf);
         return true;
+    }
+
+    private void publishPeerMessage(IMMessage msg) {
+        for (int i = 0; i < observers.size(); i++ ) {
+            IMServiceObserver ob = observers.get(i);
+            ob.onPeerMessage(msg);
+        }
+    }
+
+    private void publishPeerMessageACK(int msgLocalID, long uid) {
+        for (int i = 0; i < observers.size(); i++ ) {
+            IMServiceObserver ob = observers.get(i);
+            ob.onPeerMessageACK(msgLocalID, uid);
+        }
+    }
+
+    private void publishPeerMessageRemoteACK(int msgLocalID, long uid) {
+        for (int i = 0; i < observers.size(); i++ ) {
+            IMServiceObserver ob = observers.get(i);
+            ob.onPeerMessageRemoteACK(msgLocalID, uid);
+        }
+    }
+    private void publishPeerMessageFailure(int msgLocalID, long uid) {
+        for (int i = 0; i < observers.size(); i++ ) {
+            IMServiceObserver ob = observers.get(i);
+            ob.onPeerMessageFailure(msgLocalID, uid);
+        }
+    }
+
+    private void publishConnectState() {
+        for (int i = 0; i < observers.size(); i++ ) {
+            IMServiceObserver ob = observers.get(i);
+            ob.onConnectState(connectState);
+        }
     }
 }

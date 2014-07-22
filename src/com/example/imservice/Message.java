@@ -20,7 +20,7 @@ class Command{
     public static final int MSG_GROUP_NOTIFICATION = 7;
     public static final int MSG_GROUP_IM = 8;
     public static final int MSG_PEER_ACK = 9;
-    public static final int MSG_INPUTING = 10;
+    public static final int MSG_INPUTTING = 10;
     public static final int MSG_SUBSCRIBE_ONLINE_STATE = 11;
     public static final int MSG_ONLINE_STATE = 12;
 }
@@ -86,7 +86,7 @@ public class Message {
         } else if (cmd == Command.MSG_ACK) {
             BytePacket.writeInt32((Integer)body, buf, pos);
             return Arrays.copyOf(buf, HEAD_SIZE+4);
-        } else if (cmd == Command.MSG_INPUTING) {
+        } else if (cmd == Command.MSG_INPUTTING) {
 
         }
         return null;
@@ -132,7 +132,7 @@ public class Message {
             ack.msgLocalID = BytePacket.readInt32(data, pos);
             this.body = ack;
             return true;
-        } else if (cmd == Command.MSG_INPUTING) {
+        } else if (cmd == Command.MSG_INPUTTING) {
             MessageInputing inputing = new MessageInputing();
             inputing.sender = BytePacket.readInt64(data, pos);
             pos += 8;
