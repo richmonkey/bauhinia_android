@@ -5,6 +5,10 @@ import android.app.Activity;
 import android.os.*;
 import android.util.Log;
 import android.widget.TextView;
+import com.beetle.im.BytePacket;
+import com.beetle.im.IMService;
+import com.beetle.im.Timer;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Date;

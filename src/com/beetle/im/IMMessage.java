@@ -1,14 +1,20 @@
-package com.example.imservice;
+package com.beetle.im;
 
 import android.util.Log;
 
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
- * Created by houxh on 14-7-21.
+ * Created by houxh on 14-7-23.
  */
+
+public class IMMessage {
+    public long sender;
+    public long receiver;
+    public int msgLocalID;
+    public String content;
+}
+
 
 class Command{
     public static final int MSG_HEARTBEAT = 1;
@@ -25,12 +31,6 @@ class Command{
     public static final int MSG_ONLINE_STATE = 12;
 }
 
-class IMMessage {
-    public long sender;
-    public long receiver;
-    public int msgLocalID;
-    public String content;
-}
 
 class MessagePeerACK {
     public long sender;
@@ -43,7 +43,7 @@ class MessageInputing {
     public long receiver;
 }
 
-public class Message {
+class Message {
 
     public static final int HEAD_SIZE = 8;
     public int cmd;

@@ -1,4 +1,4 @@
-package com.example.imservice;
+package com.beetle.im;
 import android.util.Log;
 import com.beetle.AsyncTCP;
 import com.beetle.TCPConnectCallback;
@@ -18,23 +18,9 @@ enum ConnectState {
     STATE_CONNECTFAIL,
 }
 
-interface IMServiceObserver {
-    public void onConnectState(ConnectState state);
-    public void onPeerInputting(long uid);
-    public void onOnlineState(long uid, boolean on);
 
-    public void onPeerMessage(IMMessage msg);
-    public void onPeerMessageACK(int msgLocalID, long uid);
-    public void onPeerMessageRemoteACK(int msgLocalID, long uid);
-    public void onPeerMessageFailure(int msgLocalID, long uid);
-}
 
-interface IMPeerMessageHandler {
-    public boolean handleMessage(IMMessage msg);
-    public boolean handleMessageACK(int msgLocalID, long uid);
-    public boolean handleMessageRemoteACK(int msgLocalID, long uid);
-    public boolean handleMessageFailure(int msgLocalID, long uid);
-}
+
 
 /**
  * Created by houxh on 14-7-21.

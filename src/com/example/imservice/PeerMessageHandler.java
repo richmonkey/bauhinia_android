@@ -1,5 +1,8 @@
 package com.example.imservice;
 
+import com.beetle.im.IMMessage;
+import com.beetle.im.IMPeerMessageHandler;
+
 /**
  * Created by houxh on 14-7-22.
  */

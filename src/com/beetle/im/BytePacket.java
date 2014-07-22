@@ -1,4 +1,4 @@
-package com.example.imservice;
+package com.beetle.im;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;

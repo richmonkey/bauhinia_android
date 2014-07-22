@@ -1,4 +1,4 @@
-package com.example.imservice;
+package com.beetle.im;
 
 import android.os.Handler;
 import android.os.Message;

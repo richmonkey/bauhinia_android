@@ -1,6 +1,7 @@
 package com.example.imservice;
 
 import android.util.Log;
+import com.beetle.im.BytePacket;
 
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -17,6 +18,7 @@ public class MessageDB {
     public static boolean writeHeader(RandomAccessFile f) {
         try {
             byte[] buf = new byte[HEADER_SIZE];
+            BytePacket.writeInt32(IMMAGIC, buf, 0);
             BytePacket.writeInt32(IMMAGIC, buf, 0);
             BytePacket.writeInt32(IMVERSION, buf, 4);
             f.write(buf);
