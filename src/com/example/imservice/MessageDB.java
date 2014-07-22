@@ -1,18 +1,20 @@
 package com.example.imservice;
 
-import java.io.File;
+import android.util.Log;
+
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
 /**
  * Created by houxh on 14-7-22.
  */
+
 public class MessageDB {
     protected static final int HEADER_SIZE = 32;
     protected static final int IMMAGIC = 0x494d494d;
     protected static final int IMVERSION = (1<<16);
 
-    protected boolean writeHeader(RandomAccessFile f) {
+    public static boolean writeHeader(RandomAccessFile f) {
         try {
             byte[] buf = new byte[HEADER_SIZE];
             BytePacket.writeInt32(IMMAGIC, buf, 0);
@@ -24,14 +26,34 @@ public class MessageDB {
         }
     }
 
-    protected boolean writeMessage(RandomAccessFile f, IMessage msg) {
+    public  static boolean checkHeader(RandomAccessFile f) {
+        try {
+            byte[] header = new byte[HEADER_SIZE];
+            f.seek(0);
+            int n = f.read(header);
+            if (n != header.length) {
+                return false;
+            }
+            int magic = BytePacket.readInt32(header, 0);
+            int version = BytePacket.readInt32(header, 4);
+            if (magic != IMMAGIC || version != IMVERSION) {
+                return false;
+            }
+
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public static boolean writeMessage(RandomAccessFile f, IMessage msg) {
         try {
             byte[] buf = new byte[64 * 1024];
             int pos = 0;
 
             byte[] content = msg.content.raw.getBytes("UTF-8");
             int len = content.length + 8 + 8 + 4 + 4;
-            if (4 + 4 + len + 4 + 4 > 64*1024) return false;
+            if (4 + 4 + len + 4 + 4 > 64 * 1024) return false;
 
             BytePacket.writeInt32(IMMAGIC, buf, pos);
             pos += 4;
@@ -50,29 +72,71 @@ public class MessageDB {
             BytePacket.writeInt32(len, buf, pos);
             pos += 4;
             BytePacket.writeInt32(IMMAGIC, buf, pos);
+
             f.write(buf, 0, 4 + 4 + len + 4 + 4);
             return true;
-        } catch(Exception e) {
+        } catch (Exception e) {
             return false;
         }
     }
 
-    public boolean insertMessage(RandomAccessFile f, IMessage msg) throws IOException{
+    public static IMessage readMessage(ReverseFile file) {
+        try {
+            byte[] buf = new byte[8];
+            int n = file.read(buf);
+            if (n != 8) {
+                return null;
+            }
+            int len = BytePacket.readInt32(buf, 0);
+            int magic = BytePacket.readInt32(buf, 4);
+            if (magic != MessageDB.IMMAGIC) {
+                return null;
+            }
+
+            buf = new byte[len + 8];
+            n = file.read(buf);
+            if (n != buf.length) {
+                return null;
+            }
+
+            IMessage msg = new IMessage();
+            msg.msgLocalID = (int)file.getFilePointer();
+            int pos = 8;
+            msg.flags = BytePacket.readInt32(buf, pos);
+            pos += 4;
+            msg.timestamp = BytePacket.readInt32(buf, pos);
+            pos += 4;
+            msg.sender = BytePacket.readInt64(buf, pos);
+            pos += 8;
+            msg.receiver = BytePacket.readInt64(buf, pos);
+            pos += 8;
+            msg.content = new MessageContent();
+            msg.content.raw = new String(buf, pos, len - 24, "UTF-8");
+            return msg;
+        } catch (Exception e) {
+            Log.e("imservice", "read file exception:" + e);
+            return null;
+        }
+    }
+
+    public static boolean insertMessage(RandomAccessFile f, IMessage msg) throws IOException{
         long size = f.length();
         if (size < HEADER_SIZE && size > 0) {
             f.setLength(0);
             size = 0;
+            Log.e("imservice", "truncate file");
         }
         if (size == 0) {
             writeHeader(f);
+            size = HEADER_SIZE;
         }
         msg.msgLocalID = (int)size;
+        f.seek(size);
         writeMessage(f, msg);
-        f.close();
         return true;
     }
 
-    protected boolean addFlag(RandomAccessFile f, int msgLocalID, int flag) {
+    public static boolean addFlag(RandomAccessFile f, int msgLocalID, int flag) {
         try {
             f.seek(msgLocalID);
             byte[] buf = new byte[12];
@@ -93,78 +157,4 @@ public class MessageDB {
             return false;
         }
     }
-}
-
-class PeerMessageDB extends MessageDB {
-
-    private static PeerMessageDB instance = new PeerMessageDB();
-
-    public static PeerMessageDB getInstance() {
-        return instance;
-    }
-
-    private File dir;
-
-    public void setDir(File dir) {
-        this.dir = dir;
-    }
-
-    private String fileName(long uid) {
-        return ""+uid;
-    }
-
-    public boolean insertMessage(IMessage msg) {
-        try {
-            File file = new File(this.dir, fileName(msg.receiver));
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
-            return insertMessage(f, msg);
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public boolean acknowledgeMessage(int msgLocalID, long uid) {
-        try {
-            File file = new File(this.dir, fileName(uid));
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
-            addFlag(f, msgLocalID, MessageFlag.MESSAGE_FLAG_ACK);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public boolean acknowledgeMessageFromRemote(int msgLocalID, long uid) {
-        try {
-            File file = new File(this.dir, fileName(uid));
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
-            addFlag(f, msgLocalID, MessageFlag.MESSAGE_FLAG_PEER_ACK);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public boolean markMessageFailure(int msgLocalID, long uid) {
-        try {
-            File file = new File(this.dir, fileName(uid));
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
-            addFlag(f, msgLocalID, MessageFlag.MESSAGE_FLAG_FAILURE);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    public boolean removeMessage(int msgLocalID, long uid) {
-        try {
-            File file = new File(this.dir, fileName(uid));
-            RandomAccessFile f = new RandomAccessFile(file, "rw");
-            addFlag(f, msgLocalID, MessageFlag.MESSAGE_FLAG_DELETE);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
 }

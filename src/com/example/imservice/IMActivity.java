@@ -50,6 +50,7 @@ public class IMActivity extends Activity {
     private void runUnitTest() {
         testFile();
         testBytePacket();
+        testMessageDB();
     }
 
     private void testBytePacket() {
@@ -60,6 +61,26 @@ public class IMActivity extends Activity {
         long v2 = BytePacket.readInt64(buf, 0);
         assert(v1 == 10);
         assert(v2 == 1001);
+    }
+
+    private void testMessageDB() {
+        PeerMessageDB db = PeerMessageDB.getInstance();
+        db.setDir(this.getDir("peer", MODE_PRIVATE));
+
+        IMessage msg = new IMessage();
+        msg.sender = 1;
+        msg.receiver = 2;
+        msg.content = new MessageContent();
+        msg.content.raw = "11";
+        boolean r = db.insertMessage(msg, 2);
+        Log.i(TAG, "insert:" + r);
+
+        PeerMessageIterator iter = db.newMessageIterator(2);
+        while (true) {
+            IMessage msg2 = iter.next();
+            if (msg2 == null) break;
+            Log.i(TAG, "msg sender:" + msg2.sender + " receiver:" + msg2.receiver);
+        }
     }
 
     private void testFile() {

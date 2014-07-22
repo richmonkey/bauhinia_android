@@ -17,7 +17,7 @@ public class PeerMessageHandler implements IMPeerMessageHandler {
         imsg.receiver = msg.receiver;
         imsg.content = new MessageContent();
         imsg.content.raw = msg.content;
-        return db.insertMessage(imsg);
+        return db.insertMessage(imsg, msg.sender);
     }
 
     public boolean handleMessageACK(int msgLocalID, long uid) {
