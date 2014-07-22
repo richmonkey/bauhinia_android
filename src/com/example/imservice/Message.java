@@ -94,7 +94,7 @@ public class Message {
 
     public boolean unpack(byte[] data) {
         int pos = 0;
-        int seq = BytePacket.readInt32(data, pos);
+        this.seq = BytePacket.readInt32(data, pos);
         pos += 4;
         cmd = data[pos];
         pos += 4;

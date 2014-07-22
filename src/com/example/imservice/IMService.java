@@ -18,6 +18,7 @@ public class IMService {
     }
 
     private final String TAG = "imservice";
+    private final int HEARTBEAT = 10;
     private AsyncTCP tcp;
     private boolean stopped;
     private Timer connectTimer;
@@ -39,7 +40,6 @@ public class IMService {
         heartbeatTimer = new Timer() {
             @Override
             protected void fire() {
-                Log.i(TAG, "heartbeat timer fire");
                 IMService.this.sendHeartbeat();
             }
         };
@@ -50,7 +50,7 @@ public class IMService {
         connectTimer.setTimer(uptimeMillis());
         connectTimer.resume();
 
-        heartbeatTimer.setTimer(uptimeMillis(), 8*1000);
+        heartbeatTimer.setTimer(uptimeMillis(), HEARTBEAT*1000);
         heartbeatTimer.resume();
     }
 
