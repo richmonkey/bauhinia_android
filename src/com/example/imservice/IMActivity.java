@@ -1,31 +1,19 @@
 package com.example.imservice;
 
 import android.app.Activity;
-import android.content.ComponentName;
-import android.content.Context;
-import android.content.Intent;
-import android.content.ServiceConnection;
+
 import android.os.*;
 import android.util.Log;
-import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
-
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.Date;
 
-import static android.os.SystemClock.uptimeMillis;
 
 public class IMActivity extends Activity {
-
     private IMService im;
     private Timer timer;
     private final String TAG = "imservice";
-    /**
-     * Some text view we are using to show state information.
-     */
-    TextView mCallbackText;
 
     /**
      * Called when the activity is first created.
@@ -33,9 +21,9 @@ public class IMActivity extends Activity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
-        mCallbackText = (TextView) findViewById(R.id.text);
-
+        TextView bt = new TextView(this);
+        bt.setText( "hello world" );
+        setContentView(bt);
 
         runUnitTest();
         Log.i(TAG, "start im service");
