@@ -11,12 +11,6 @@ import java.util.Map;
 
 import static android.os.SystemClock.uptimeMillis;
 
-enum ConnectState {
-    STATE_UNCONNECTED,
-    STATE_CONNECTING,
-    STATE_CONNECTED,
-    STATE_CONNECTFAIL,
-}
 
 
 
@@ -26,6 +20,13 @@ enum ConnectState {
  * Created by houxh on 14-7-21.
  */
 public class IMService {
+
+    public enum ConnectState {
+        STATE_UNCONNECTED,
+        STATE_CONNECTING,
+        STATE_CONNECTED,
+        STATE_CONNECTFAIL,
+    }
 
     private final String TAG = "imservice";
     private final int HEARTBEAT = 10;
@@ -234,11 +235,35 @@ public class IMService {
         publishPeerMessageACK(im.msgLocalID, im.receiver);
     }
 
+    private void handlePeerACK(Message msg) {
+        MessagePeerACK ack = (MessagePeerACK)msg.body;
+        this.peerMessageHandler.handleMessageRemoteACK(ack.msgLocalID, ack.sender);
+        for (int i = 0; i < observers.size(); i++ ) {
+            IMServiceObserver ob = observers.get(i);
+            ob.onPeerMessageRemoteACK(ack.msgLocalID, ack.sender);
+        }
+    }
+
+    private void handleOnlineState(Message msg) {
+        MessageOnlineState state = (MessageOnlineState)msg.body;
+        for (int i = 0; i < observers.size(); i++ ) {
+            IMServiceObserver ob = observers.get(i);
+            boolean on = state.online != 0 ? true : false;
+            ob.onOnlineState(state.sender, on);
+        }
+    }
+
     private void handleMessage(Message msg) {
         if (msg.cmd == Command.MSG_AUTH_STATUS) {
             handleAuthStatus(msg);
         } else if (msg.cmd == Command.MSG_IM) {
             handleIMMessage(msg);
+        } else if (msg.cmd == Command.MSG_ACK) {
+            handleACK(msg);
+        } else if (msg.cmd == Command.MSG_ONLINE_STATE) {
+            handleOnlineState(msg);
+        } else if (msg.cmd == Command.MSG_PEER_ACK) {
+            handlePeerACK(msg);
         } else {
             Log.i(TAG, "unknown message cmd:"+msg.cmd);
         }

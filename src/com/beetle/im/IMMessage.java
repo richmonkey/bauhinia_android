@@ -2,6 +2,7 @@ package com.beetle.im;
 
 import android.util.Log;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 
 /**
@@ -41,6 +42,15 @@ class MessagePeerACK {
 class MessageInputing {
     public long sender;
     public long receiver;
+}
+
+class MessageOnlineState {
+    public long sender;
+    public int online;
+}
+
+class MessageSubscribe {
+    public ArrayList<Long> uids;
 }
 
 class Message {
@@ -86,8 +96,22 @@ class Message {
         } else if (cmd == Command.MSG_ACK) {
             BytePacket.writeInt32((Integer)body, buf, pos);
             return Arrays.copyOf(buf, HEAD_SIZE+4);
+        } else if (cmd == Command.MSG_SUBSCRIBE_ONLINE_STATE) {
+            MessageSubscribe sub = (MessageSubscribe)body;
+            BytePacket.writeInt32(sub.uids.size(), buf, pos);
+            pos += 4;
+            for (int i = 0; i < sub.uids.size(); i++) {
+                Long uid = sub.uids.get(i);
+                BytePacket.writeInt64(uid, buf, pos);
+                pos += 8;
+            }
+            return Arrays.copyOf(buf, HEAD_SIZE + 4 + sub.uids.size()*8);
         } else if (cmd == Command.MSG_INPUTTING) {
-
+            MessageInputing in = (MessageInputing)body;
+            BytePacket.writeInt64(in.sender, buf, pos);
+            pos += 8;
+            BytePacket.writeInt64(in.receiver, buf, pos);
+            return Arrays.copyOf(buf, HEAD_SIZE + 16);
         }
         return null;
     }
@@ -138,7 +162,14 @@ class Message {
             pos += 8;
             inputing.receiver = BytePacket.readInt64(data, pos);
             this.body = inputing;
-            return  true;
+            return true;
+        } else if (cmd == Command.MSG_ONLINE_STATE) {
+            MessageOnlineState state = new MessageOnlineState();
+            state.sender = BytePacket.readInt64(data, pos);
+            pos += 8;
+            state.online = BytePacket.readInt32(data, pos);
+            this.body = state;
+            return true;
         } else {
             return false;
         }

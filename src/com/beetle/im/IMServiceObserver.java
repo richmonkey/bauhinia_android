@@ -4,7 +4,7 @@ package com.beetle.im;
  * Created by houxh on 14-7-23.
  */
 public interface IMServiceObserver {
-    public void onConnectState(ConnectState state);
+    public void onConnectState(IMService.ConnectState state);
     public void onPeerInputting(long uid);
     public void onOnlineState(long uid, boolean on);
 
