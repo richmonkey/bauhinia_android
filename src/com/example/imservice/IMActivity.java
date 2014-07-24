@@ -2,7 +2,10 @@ package com.example.imservice;
 
 import android.app.Activity;
 
+import android.database.Cursor;
 import android.os.*;
+import android.provider.ContactsContract;
+import android.provider.UserDictionary;
 import android.util.Log;
 import android.view.View;
 import android.widget.TextView;
@@ -10,6 +13,7 @@ import com.beetle.im.*;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
 import java.util.Date;
 
 
@@ -27,10 +31,12 @@ public class IMActivity extends Activity implements IMServiceObserver {
         setContentView(R.layout.main);
         PeerMessageDB db = PeerMessageDB.getInstance();
         db.setDir(this.getDir("peer", MODE_PRIVATE));
+        ContactDB cdb = ContactDB.getInstance();
+        cdb.setContentResolver(getContentResolver());
 
-        boolean unittest = false;
+        boolean unittest = true;
         if (unittest) {
-            runUnitTest();
+            //runUnitTest();
         } else {
             Log.i(TAG, "start im service");
             im = new IMService();
@@ -42,12 +48,24 @@ public class IMActivity extends Activity implements IMServiceObserver {
             im.start();
         }
     }
+
     private void runUnitTest() {
+        testContact();
         testFile();
         testBytePacket();
         testMessageDB();
     }
 
+    private void testContact() {
+        ContactDB db = ContactDB.getInstance();
+        db.loadContacts();
+        ArrayList<Contact> contacts = db.getContacts();
+        for (int i = 0; i < contacts.size(); i++) {
+            Contact c = contacts.get(i);
+            Log.i(TAG, "name:" + c.displayName);
+        }
+        db.refreshContacts();
+    }
     private void testBytePacket() {
         byte[] buf = new byte[8];
         BytePacket.writeInt32(new Integer(10), buf, 0);
