@@ -14,20 +14,22 @@ class MessageFlag {
     public static final int MESSAGE_FLAG_FAILURE = 8;
 }
 
-class MessageContent {
-
-    public String raw;
-
-    public MessageType getType() {
-        return MessageType.MESSAGE_TEXT;
-    }
-
-    public String getText() {
-        return raw;
-    }
-}
 
 public class IMessage {
+
+    public static class MessageContent {
+
+        public String raw;
+
+        public MessageType getType() {
+            return MessageType.MESSAGE_TEXT;
+        }
+
+        public String getText() {
+            return raw;
+        }
+    }
+
     public int msgLocalID;
     public int flags;
     public long sender;

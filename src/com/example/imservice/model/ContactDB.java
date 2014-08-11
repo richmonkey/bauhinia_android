@@ -1,39 +1,21 @@
-package com.example.imservice;
+package com.example.imservice.model;
 
 import android.content.ContentResolver;
 import android.database.Cursor;
 import android.provider.ContactsContract;
 import android.util.Log;
+import com.example.imservice.model.PhoneNumber;
+
 import java.util.ArrayList;
 
-/**
- * Created by houxh on 14-7-24.
- */
-
-class ContactData {
-    public String value;
-    public String label;
-}
-
-class Contact extends Object{
-    public long cid;
-    public String displayName;
-    public long updatedTimestamp;
-    public ArrayList<ContactData> phoneNumbers = new ArrayList<ContactData>();
-
-    public boolean equals(Object other) {
-        if (!(other instanceof Contact)) return false;
-        Contact o = (Contact)other;
-        return o.cid == this.cid;
-    }
-}
-
-interface ContactObserver {
-    public void OnExternalChange();
-}
 
 //todo 处理多账号问题
 public class ContactDB {
+
+    public static interface ContactObserver {
+        public void OnExternalChange();
+    }
+
     private final String TAG = "imservice";
     private static ContactDB instance = new ContactDB();
 
@@ -42,7 +24,7 @@ public class ContactDB {
     }
 
     private ArrayList<ContactObserver> observers = new ArrayList<ContactObserver>();
-    private ArrayList<Contact> contacts;
+    private ArrayList<Contact> contacts = new ArrayList<Contact>();
     private ContentResolver contentResolver;
 
     public void setContentResolver(ContentResolver resolver) {
@@ -116,6 +98,24 @@ public class ContactDB {
                 ob.OnExternalChange();
             }
         }
+    }
+
+    public Contact loadContact(PhoneNumber number) {
+        for (int i = 0; i < contacts.size(); i++) {
+            Contact c = contacts.get(i);
+            ArrayList<Contact.ContactData> numbers = c.phoneNumbers;
+            for (int j = 0; j < numbers.size(); j++) {
+                Contact.ContactData data = numbers.get(j);
+                PhoneNumber n = new PhoneNumber();
+                if (!n.parsePhoneNumber(data.value)) {
+                    continue;
+                }
+                if (n.equals(number)) {
+                    return c;
+                }
+            }
+        }
+        return null;
     }
 
     private void readContacts(ArrayList<Contact> contacts) {
@@ -258,7 +258,7 @@ public class ContactDB {
                 String label = cursor.getString(index);
                 Log.i(TAG, "number:" + number + " " + label);
 
-                ContactData data = new ContactData();
+                Contact.ContactData data = new Contact.ContactData();
                 data.value = number;
                 data.label = label;
                 c.phoneNumbers.add(data);
@@ -323,7 +323,7 @@ public class ContactDB {
                 String label = cursor.getString(index);
                 Log.i(TAG, "number:" + number + " " + label);
 
-                ContactData data = new ContactData();
+                Contact.ContactData data = new Contact.ContactData();
                 data.value = number;
                 data.label = label;
                 Contact c = findContact(cid);

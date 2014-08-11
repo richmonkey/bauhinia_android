@@ -3,11 +3,9 @@ package com.example.imservice;
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
-import android.view.View;
 import com.beetle.im.BytePacket;
-import com.beetle.im.IMMessage;
-import com.beetle.im.IMService;
-import com.beetle.im.Timer;
+import com.example.imservice.model.*;
+import com.google.code.p.leveldb.LevelDB;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -30,17 +28,39 @@ public class UnitTestActivity extends Activity {
         db.setDir(this.getDir("peer", MODE_PRIVATE));
         ContactDB cdb = ContactDB.getInstance();
         cdb.setContentResolver(getContentResolver());
+
+        LevelDB ldb = LevelDB.getDefaultDB();
+        String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
+        ldb.open(dir);
+
         runUnitTest();
     }
 
     private void runUnitTest() {
-        testUserDB();
+        testAPI();
 
 /*
+testUserDB();
         testContact();
         testFile();
         testBytePacket();
         testMessageDB();*/
+    }
+
+    private void testAPI() {
+        Thread t = new Thread() {
+            @Override
+            public void run() {
+                String code = APIRequest.requestVerifyCode("86", "13635273142");
+                Log.i(TAG, "code:" + code);
+                Token token = APIRequest.requestAuthToken("86", "13635273142", code);
+                Log.i(TAG, "access token:" + token.accessToken);
+                Token token2 = APIRequest.refreshAccessToken(token.refreshToken);
+                Log.i(TAG, "access token:" + token2.accessToken);
+                return;
+            }
+        };
+        t.start();
     }
 
     private void testContact() {
@@ -70,7 +90,7 @@ public class UnitTestActivity extends Activity {
         IMessage msg = new IMessage();
         msg.sender = 86013635273143L;
         msg.receiver = 86013635273142L;
-        msg.content = new MessageContent();
+        msg.content = new IMessage.MessageContent();
         msg.content.raw = "11";
         boolean r = db.insertMessage(msg, msg.receiver);
         Log.i(TAG, "insert:" + r);
@@ -99,8 +119,13 @@ public class UnitTestActivity extends Activity {
     }
 
     private void testUserDB() {
-        User u = UserDB.getInstance().loadUser(86013635273142L);
-        Log.i(TAG, "" + u.number.getZone() + " " + u.number.getNumber());
+        User u = new User();
+        u.uid = 86013635273142L;
+        u.number = new PhoneNumber("86_13635273142");
+        UserDB db = UserDB.getInstance();
+        db.addUser(u);
+        User u2 = db.loadUser(u.uid);
+        Log.i(TAG, "" + u2.number.getZone() + " " + u2.number.getNumber());
     }
     public static int now() {
         Date date = new Date();

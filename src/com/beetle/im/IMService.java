@@ -48,6 +48,12 @@ public class IMService {
 
     private byte[] data;
 
+    private static IMService im = new IMService();
+
+    public static IMService getInstance() {
+        return im;
+    }
+
     public IMService() {
         connectTimer = new Timer() {
             @Override

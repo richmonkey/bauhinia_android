@@ -10,7 +10,13 @@ import android.widget.*;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
+import com.example.imservice.model.Contact;
+import com.example.imservice.model.ContactDB;
+import com.example.imservice.model.User;
+import com.example.imservice.model.UserDB;
+import com.google.code.p.leveldb.LevelDB;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -30,7 +36,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
 
     BaseAdapter adapter;
-    class MyAdapter extends BaseAdapter {
+    class ConversationAdapter extends BaseAdapter {
         @Override
         public int getCount() {
             return conversations.size();
@@ -64,11 +70,15 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
     // 初始化组件
     private void initWidget() {
         lv = (ListView) findViewById(R.id.list);
-        adapter = new MyAdapter();
+        adapter = new ConversationAdapter();
         lv.setAdapter(adapter);
         lv.setOnItemClickListener(this);
     }
 
+    //禁用返回键
+    @Override
+    public void onBackPressed() {
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +91,10 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         ContactDB cdb = ContactDB.getInstance();
         cdb.setContentResolver(getContentResolver());
         cdb.loadContacts();
+
+        LevelDB ldb = LevelDB.getDefaultDB();
+        String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
+        ldb.open(dir);
 
         Log.i(TAG, "start im service");
         IMService im =  IMService.getInstance();
@@ -159,7 +173,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         imsg.msgLocalID = msg.msgLocalID;
         imsg.sender = msg.sender;
         imsg.receiver = msg.receiver;
-        imsg.content = new MessageContent();
+        imsg.content = new IMessage.MessageContent();
         imsg.content.raw = msg.content;
         conversation.message = imsg;
 

@@ -3,6 +3,8 @@ package com.example.imservice;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMPeerMessageHandler;
 
+import java.util.Date;
+
 /**
  * Created by houxh on 14-7-22.
  */
@@ -13,12 +15,19 @@ public class PeerMessageHandler implements IMPeerMessageHandler {
         return instance;
     }
 
+    public static int now() {
+        Date date = new Date();
+        long t = date.getTime();
+        return (int)(t/1000);
+    }
+
     public boolean handleMessage(IMMessage msg) {
         PeerMessageDB db = PeerMessageDB.getInstance();
         IMessage imsg = new IMessage();
+        imsg.timestamp = now();
         imsg.sender = msg.sender;
         imsg.receiver = msg.receiver;
-        imsg.content = new MessageContent();
+        imsg.content = new IMessage.MessageContent();
         imsg.content.raw = msg.content;
         return db.insertMessage(imsg, msg.sender);
     }

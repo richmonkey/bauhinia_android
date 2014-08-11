@@ -3,6 +3,7 @@ package com.example.imservice;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -13,6 +14,54 @@ import java.nio.channels.FileChannel;
  */
 
 
+class Conversation {
+    public int type;
+    public long cid;
+    public IMessage message;
+    public String name;
+}
+interface ConversationIterator {
+    public Conversation next();
+}
+
+class PeerConversationIterator implements ConversationIterator{
+    private File[] files;
+    private int index;
+    public PeerConversationIterator(File[] files) {
+        this.files = files;
+        index = -1;
+    }
+
+    public Conversation next() {
+        index++;
+        if (files == null || files.length <= index) {
+            return null;
+        }
+
+
+        for (; index < files.length; index++) {
+            File file = files[index];
+            if (!file.isFile()) {
+                continue;
+            }
+            try {
+                String name = file.getName();
+                long uid = Long.parseLong(name);
+
+                PeerMessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(uid);
+                IMessage msg = iter.next();
+                Conversation conv = new Conversation();
+                conv.cid = uid;
+                conv.message = msg;
+                return conv;
+            }  catch (NumberFormatException e) {
+                e.printStackTrace();
+                continue;
+            }
+        }
+        return null;
+    }
+}
 
 class PeerMessageIterator {
 
@@ -61,6 +110,7 @@ public class PeerMessageDB extends MessageDB {
             return b;
         } catch (Exception e) {
             Log.i("imservice", "excp:" + e);
+            e.printStackTrace();
             return false;
         }
     }
@@ -117,5 +167,9 @@ public class PeerMessageDB extends MessageDB {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    public ConversationIterator newConversationIterator() {
+        return new PeerConversationIterator(this.dir.listFiles());
     }
 }

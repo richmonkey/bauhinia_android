@@ -1,4 +1,4 @@
-package com.example.imservice;
+package com.example.imservice.model;
 
 import android.provider.ContactsContract;
 
@@ -33,8 +33,27 @@ public class PhoneNumber {
         this.zone = zone;
         this.number = number;
     }
+    public PhoneNumber(String zoneNumber) {
+        String[] t = zoneNumber.split("_");
+        if (t.length != 2) {
+            return;
+        }
+        zone = t[0];
+        number = t[1];
+    }
     public PhoneNumber() {
 
+    }
+
+    public boolean isValid() {
+        if (zone == null || zone.length() == 0) return false;
+        if (number == null || number.length() == 0) return false;
+
+        return true;
+    }
+
+    public String getZoneNumber() {
+        return zone + "_" + number;
     }
 
     public boolean parsePhoneNumber(String phoneNumber) {
