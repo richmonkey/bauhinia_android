@@ -21,6 +21,9 @@ public class UserDB {
             String zoneNumber = db.get(key + "_number");
             if (zoneNumber != null && zoneNumber.length() > 0) {
                 u.number = new PhoneNumber(zoneNumber);
+            } else {
+                String[] t = ("" + uid).split("0");
+                u.number = new PhoneNumber(t[0], t[1]);
             }
             return u;
         } catch (Exception e) {
