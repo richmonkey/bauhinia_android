@@ -41,7 +41,7 @@ public class Token {
             accessToken = db.get("access_token");
             refreshToken = db.get("refresh_token");
             expireTimestamp = (int)db.getLong("token_expire");
-            uid = (int)db.getLong("token_uid");
+            uid = db.getLong("token_uid");
         } catch(Exception e) {
             e.printStackTrace();
         }

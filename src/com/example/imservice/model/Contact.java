@@ -32,8 +32,8 @@ public class Contact extends Object{
             return;
         }
         this.phoneNumbers = new ArrayList<ContactData>();
-        for (int i = 0; i < phoneNumbers.size(); i++) {
-            ContactData d = phoneNumbers.get(i);
+        for (int i = 0; i < c.phoneNumbers.size(); i++) {
+            ContactData d = c.phoneNumbers.get(i);
             ContactData data = new ContactData();
             data.value = d.value;
             data.label = d.label;

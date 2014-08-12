@@ -296,7 +296,7 @@ public class IMService {
                 break;
             }
             int len = BytePacket.readInt32(this.data, pos);
-            if (this.data.length < 4 + Message.HEAD_SIZE + len) {
+            if (this.data.length < pos + 4 + Message.HEAD_SIZE + len) {
                 break;
             }
             Message msg = new Message();

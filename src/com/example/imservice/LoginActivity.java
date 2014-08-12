@@ -12,6 +12,9 @@ import android.widget.EditText;
 import android.widget.Toast;
 import com.beetle.im.Timer;
 import com.example.imservice.model.ContactDB;
+import com.example.imservice.model.PhoneNumber;
+import com.example.imservice.model.User;
+import com.example.imservice.model.UserDB;
 import com.google.code.p.leveldb.LevelDB;
 
 import java.io.File;
@@ -46,10 +49,11 @@ public class LoginActivity extends Activity{
 
         Token t = Token.getInstance();
         if (t.accessToken != null) {
+            Log.i(TAG, "current uid:" + t.uid);
             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
-            //finish();
+            finish();
         }
     }
 
@@ -89,6 +93,11 @@ public class LoginActivity extends Activity{
                         t.expireTimestamp = token.expireTimestamp;
                         t.uid = token.uid;
                         t.save();
+
+                        User u = new User();
+                        u.uid = t.uid;
+                        u.number = new PhoneNumber("86", phone);
+                        UserDB.getInstance().addUser(u);
 
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

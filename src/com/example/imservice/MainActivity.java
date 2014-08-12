@@ -1,8 +1,11 @@
 package com.example.imservice;
 
-import android.app.ActionBar;
-import android.app.Activity;
+import android.app.*;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -34,8 +37,8 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     ListView lv;
 
-    private final long uid = 86013635273142L;
-    private final String TAG = "imservice";
+    private long uid;
+    private static final String TAG = "imservice";
 
     private ActionBar actionBar;
     private BaseAdapter adapter;
@@ -109,7 +112,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         setContentView(R.layout.activity_main);
 
         ContactDB.getInstance().loadContacts();
-
+        this.uid = Token.getInstance().uid;
         Log.i(TAG, "start im service");
         IMService im =  IMService.getInstance();
         im.setHost("106.186.122.158");
@@ -164,6 +167,41 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     }
 
+    public void showNotification(IMessage msg, String name){
+        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+        Intent intent = new Intent(MainActivity.this, MainActivity.class);
+        PendingIntent pIntent = PendingIntent.getActivity(MainActivity.this, 0, intent, 0);
+
+        Notification mNotification = new Notification.Builder(this)
+                .setContentTitle(name)
+                .setContentText(msg.content.getText())
+                .setSmallIcon(R.drawable.xiaohei)
+                .setContentIntent(pIntent)
+                .setSound(soundUri)
+                .build();
+
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+        mNotification.flags |= Notification.FLAG_AUTO_CANCEL;
+        notificationManager.notify(msg.msgLocalID, mNotification);
+    }
+
+    public static boolean isBackground(Context context) {
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
+        for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
+            if (appProcess.processName.equals(context.getPackageName())) {
+                if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND) {
+                    Log.i("后台", appProcess.processName);
+                    return true;
+                }else{
+                    Log.i("前台", appProcess.processName);
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
+
     public void onPeerMessage(IMMessage msg) {
         Log.i(TAG, "on peer message");
         Conversation conversation = null;
@@ -192,6 +230,10 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         conversation.message = imsg;
 
         adapter.notifyDataSetChanged();
+
+        if (isBackground(this)) {
+            showNotification(imsg, conversation.name);
+        }
     }
 
     public static int now() {

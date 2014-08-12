@@ -25,7 +25,7 @@ import java.util.Date;
 public class IMActivity extends Activity implements IMServiceObserver {
     private final String TAG = "imservice";
 
-    private final long currentUID = 86013635273142L;
+    private long currentUID;
 
     private long peerUID;
     private ArrayList<IMessage> messages;
@@ -89,6 +89,7 @@ public class IMActivity extends Activity implements IMServiceObserver {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.chat);
 
+        this.currentUID = Token.getInstance().uid;
         Intent intent = getIntent();
         peerUID = intent.getLongExtra("peer_uid", 0);
         if (peerUID == 0) {
@@ -173,6 +174,9 @@ public class IMActivity extends Activity implements IMServiceObserver {
     }
 
     public void onPeerMessage(IMMessage msg) {
+        if (msg.sender != peerUID) {
+            return;
+        }
         Log.i(TAG, "recv msg:" + msg.content);
         IMessage imsg = new IMessage();
         imsg.timestamp = now();
