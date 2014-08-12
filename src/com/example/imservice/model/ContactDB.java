@@ -35,6 +35,14 @@ public class ContactDB {
         return contacts;
     }
 
+    public ArrayList<Contact> copyContacts() {
+        ArrayList<Contact> array = new ArrayList<Contact>();
+        for (int i = 0; i < contacts.size(); i++) {
+            array.add(new Contact(contacts.get(i)));
+        }
+        return array;
+    }
+
     public void addObserver(ContactObserver ob) {
         if (observers.contains(ob)) {
             return;

@@ -98,7 +98,7 @@ public class IMActivity extends Activity implements IMServiceObserver {
         messages = new ArrayList<IMessage>();
 
         PeerMessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID);
-        while (true) {
+        while (true && iter != null) {
             IMessage msg = iter.next();
             if (msg == null) {
                 break;

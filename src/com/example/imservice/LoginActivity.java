@@ -11,6 +11,11 @@ import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
 import com.beetle.im.Timer;
+import com.example.imservice.model.ContactDB;
+import com.google.code.p.leveldb.LevelDB;
+
+import java.io.File;
+
 import static android.os.SystemClock.uptimeMillis;
 /**
  * Created by houxh on 14-8-11.
@@ -25,8 +30,27 @@ public class LoginActivity extends Activity{
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login);
+
+        PeerMessageDB db = PeerMessageDB.getInstance();
+        db.setDir(this.getDir("peer", MODE_PRIVATE));
+
+        ContactDB cdb = ContactDB.getInstance();
+        cdb.setContentResolver(getApplicationContext().getContentResolver());
+
+        LevelDB ldb = LevelDB.getDefaultDB();
+        String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
+        ldb.open(dir);
+
         phoneText = (EditText)findViewById(R.id.login_edit_userName);
         codeText = (EditText)findViewById(R.id.login_edit_password);
+
+        Token t = Token.getInstance();
+        if (t.accessToken != null) {
+            Intent intent = new Intent(LoginActivity.this, MainActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            //finish();
+        }
     }
 
     public void onLogin(View v) {
@@ -59,6 +83,13 @@ public class LoginActivity extends Activity{
                     @Override
                     public void run() {
                         dialog.dismiss();
+                        Token t = Token.getInstance();
+                        t.accessToken = token.accessToken;
+                        t.refreshToken = token.refreshToken;
+                        t.expireTimestamp = token.expireTimestamp;
+                        t.uid = token.uid;
+                        t.save();
+
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         startActivity(intent);

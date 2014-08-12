@@ -6,4 +6,5 @@ package com.example.imservice.model;
 public class User {
     public long uid;
     public PhoneNumber number;
+    public String name;//来自联系人
 }

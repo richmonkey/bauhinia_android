@@ -165,6 +165,7 @@ public class PeerMessageDB extends MessageDB {
             RandomAccessFile f = new RandomAccessFile(file, "r");
             return new PeerMessageIterator(f);
         } catch (Exception e) {
+            e.printStackTrace();
             return null;
         }
     }

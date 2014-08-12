@@ -28,6 +28,20 @@ public class UserDB {
         }
     }
 
+    public User loadUser(PhoneNumber number) {
+        LevelDB db = LevelDB.getDefaultDB();
+        try {
+            long uid = db.getLong("numbers_" + number.getZoneNumber());
+            if (uid == 0) {
+                return null;
+            }
+            return loadUser(uid);
+        } catch(Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public boolean addUser(User user) {
         LevelDB db = LevelDB.getDefaultDB();
         String key = getUserKey(user.uid);

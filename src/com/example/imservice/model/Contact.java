@@ -19,5 +19,26 @@ public class Contact extends Object{
         Contact o = (Contact)other;
         return o.cid == this.cid;
     }
+
+    public Contact() {
+
+    }
+
+    public Contact(Contact c) {
+        this.cid = c.cid;
+        this.displayName = c.displayName;
+        this.updatedTimestamp = c.updatedTimestamp;
+        if (phoneNumbers == null) {
+            return;
+        }
+        this.phoneNumbers = new ArrayList<ContactData>();
+        for (int i = 0; i < phoneNumbers.size(); i++) {
+            ContactData d = phoneNumbers.get(i);
+            ContactData data = new ContactData();
+            data.value = d.value;
+            data.label = d.label;
+            this.phoneNumbers.add(data);
+        }
+    }
 }
 

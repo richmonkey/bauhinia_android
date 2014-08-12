@@ -1,9 +1,12 @@
 package com.example.imservice;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
@@ -34,8 +37,8 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
     private final long uid = 86013635273142L;
     private final String TAG = "imservice";
 
-
-    BaseAdapter adapter;
+    private ActionBar actionBar;
+    private BaseAdapter adapter;
     class ConversationAdapter extends BaseAdapter {
         @Override
         public int getCount() {
@@ -69,15 +72,35 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     // 初始化组件
     private void initWidget() {
+        actionBar=getActionBar();
+        actionBar.show();
+
         lv = (ListView) findViewById(R.id.list);
         adapter = new ConversationAdapter();
         lv.setAdapter(adapter);
         lv.setOnItemClickListener(this);
     }
 
-    //禁用返回键
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        super.onCreateOptionsMenu(menu);
+        MenuItem newItem=menu.add(0,0,0,"new");
+        newItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+            @Override
+            public boolean onMenuItemClick(MenuItem item) {
+                Intent intent = new Intent(MainActivity.this, NewConversation.class);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(intent);
+                return true;
+            }
+        });
+        newItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        return true;
+    }
+
     @Override
     public void onBackPressed() {
+        //禁用返回键
     }
 
     @Override
@@ -85,16 +108,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        PeerMessageDB db = PeerMessageDB.getInstance();
-        db.setDir(this.getDir("peer", MODE_PRIVATE));
-
-        ContactDB cdb = ContactDB.getInstance();
-        cdb.setContentResolver(getContentResolver());
-        cdb.loadContacts();
-
-        LevelDB ldb = LevelDB.getDefaultDB();
-        String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
-        ldb.open(dir);
+        ContactDB.getInstance().loadContacts();
 
         Log.i(TAG, "start im service");
         IMService im =  IMService.getInstance();

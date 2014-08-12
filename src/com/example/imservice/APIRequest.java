@@ -1,5 +1,9 @@
 package com.example.imservice;
 
+import android.util.Log;
+import com.example.imservice.model.Contact;
+import com.example.imservice.model.PhoneNumber;
+import com.example.imservice.model.User;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -15,7 +19,10 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Created by houxh on 14-8-11.
@@ -150,8 +157,84 @@ public class APIRequest {
         }
     }
 
-    public static JSONArray requestUsers() {
-        return null;
+    public static ArrayList<User> requestUsers(ArrayList<Contact> contacts) {
+        String uri = String.format("%s/users", URL);
+        try {
+            HttpClient getClient = new DefaultHttpClient();
+            HttpPost request = new HttpPost(uri);
+            JSONArray json = new JSONArray();
+            HashSet<String> sets = new HashSet<String>();
+            for (int i = 0; i < contacts.size(); i++) {
+                Contact c = contacts.get(i);
+                if (c.phoneNumbers == null)
+                    continue;
+
+                for (int j = 0; j < c.phoneNumbers.size(); j++) {
+                    Contact.ContactData data = c.phoneNumbers.get(j);
+                    PhoneNumber n = new PhoneNumber();
+                    if (!n.parsePhoneNumber(data.value)) {
+                        continue;
+                    }
+                    if (sets.contains(n.getZoneNumber())) {
+                        continue;
+                    }
+                    sets.add(n.getZoneNumber());
+                    JSONObject o = new JSONObject();
+                    o.put("zone", n.getZone());
+                    o.put("number", n.getNumber());
+                    json.put(o);
+                }
+            }
+            if (json.length() == 0) {
+                return new ArrayList<User>();
+            }
+
+            StringEntity s = new StringEntity(json.toString());
+            s.setContentEncoding((Header) new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
+
+            request.setEntity(s);
+
+            Log.i("imservice", "access token:" + Token.getInstance().accessToken);
+            request.addHeader("Authorization", "Bearer " + Token.getInstance().accessToken);
+
+            HttpResponse response = getClient.execute(request);
+            int statusCode = response.getStatusLine().getStatusCode();
+            if (statusCode != HttpStatus.SC_OK){
+                return null;
+            }
+            int len = (int)response.getEntity().getContentLength();
+            byte[] buf = new byte[len];
+            InputStream inStream = response.getEntity().getContent();
+            int pos = 0;
+            while (pos < len) {
+                int n = inStream.read(buf, pos, len - pos);
+                if (n == -1) {
+                    break;
+                }
+                pos += n;
+            }
+            inStream.close();
+            if (pos != len) {
+                return null;
+            }
+
+            String txt = new String(buf, "UTF-8");
+            ArrayList<User> users = new ArrayList<User>();
+            JSONArray jsonObject = new JSONArray(txt);
+            for (int i = 0; i < jsonObject.length(); i++) {
+                JSONObject o = (JSONObject)jsonObject.get(i);
+                User u = new User();
+                String z = o.getString("zone");
+                String n = o.getString("number");
+                u.number = new PhoneNumber(z, n);
+                u.uid = o.getLong("uid");
+                users.add(u);
+            }
+            return users;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
     public static int now() {
