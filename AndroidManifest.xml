@@ -3,7 +3,7 @@
           package="com.example.imservice"
           android:versionCode="1"
           android:versionName="1.0">
-    <uses-sdk android:minSdkVersion="18"/>
+    <uses-sdk android:minSdkVersion="11"/>
 
     <application android:label="imservice">
         <activity android:name=".LoginActivity"

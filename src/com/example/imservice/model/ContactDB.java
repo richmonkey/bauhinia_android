@@ -2,6 +2,7 @@ package com.example.imservice.model;
 
 import android.content.ContentResolver;
 import android.database.Cursor;
+import android.os.Build;
 import android.provider.ContactsContract;
 import android.util.Log;
 import com.example.imservice.model.PhoneNumber;
@@ -90,7 +91,7 @@ public class ContactDB {
         for (int i = 0; i < updatedContacts.size(); i++) {
             Contact c1 = updatedContacts.get(i);
             Contact c2 = findContact(c1.cid);
-            if (c1.updatedTimestamp == c2.updatedTimestamp) {
+            if (c1.updatedTimestamp > 0 && c1.updatedTimestamp == c2.updatedTimestamp) {
                 result.add(c2);
                 continue;
             }
@@ -127,6 +128,14 @@ public class ContactDB {
     }
 
     private void readContacts(ArrayList<Contact> contacts) {
+        if (Build.VERSION.SDK_INT >= 18) {
+            readContactsAfterV18(contacts);
+        } else {
+            readContactsBeforeV18(contacts);
+        }
+    }
+
+    private void readContactsAfterV18(ArrayList<Contact> contacts) {
         String[] projection = {
                 ContactsContract.Contacts._ID,
                 ContactsContract.Contacts.DISPLAY_NAME,
@@ -158,6 +167,41 @@ public class ContactDB {
             c.cid = id;
             c.displayName = name;
             c.updatedTimestamp = updatedTimestamp;
+            contacts.add(c);
+        }
+
+        cursor.close();
+    }
+
+    private void readContactsBeforeV18(ArrayList<Contact> contacts) {
+        String[] projection = {
+                ContactsContract.Contacts._ID,
+                ContactsContract.Contacts.DISPLAY_NAME,
+        };
+
+        Cursor cursor = contentResolver.query(
+                ContactsContract.Contacts.CONTENT_URI,
+                projection,
+                null,
+                null,
+                null);
+
+        if (null == cursor) {
+            Log.i(TAG, "cursor is null");
+            return;
+        }
+
+
+        int index1 = cursor.getColumnIndex(ContactsContract.Contacts._ID);
+        int index2 = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
+        while (cursor.moveToNext()) {
+            Contact c = new Contact();
+            long id = cursor.getLong(index1);
+            String name = cursor.getString(index2);
+            Log.i(TAG, ""+id + " " + name);
+            c.cid = id;
+            c.displayName = name;
+            c.updatedTimestamp = 0;
             contacts.add(c);
         }
 
