@@ -82,7 +82,7 @@ public class IMActivity extends Activity implements IMServiceObserver {
         public View getView(int position, View convertView, ViewGroup parent) {
             IMessage msg = messages.get(position);
             if (convertView == null) {
-                if (getItemViewType(position) == OUT_MSG) {
+                if (getItemViewType(position) == IN_MSG) {
                     convertView = getLayoutInflater().inflate(
                             R.layout.chatting_item_msg_text_left, null);
                 } else {

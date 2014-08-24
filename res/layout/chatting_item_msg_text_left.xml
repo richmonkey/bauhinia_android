@@ -11,23 +11,12 @@
         android:layout_marginLeft="5dp"
         android:layout_marginTop="5dp" >
 
-        <ImageView
-            android:id="@+id/iv_userhead"
-            android:layout_width="52dp"
-            android:layout_height="52dp"
-            android:layout_alignParentLeft="true"
-            android:layout_alignParentTop="true"
-            android:background="@drawable/abaose"
-            android:clickable="true"
-             />
-
         <TextView
             android:id="@+id/tv_chatcontent"
             style="@style/chat_content_date_style"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginLeft="10dp"
-            android:layout_toRightOf="@id/iv_userhead"
             android:background="@drawable/chatfrom_bg" />
 
         <TextView
@@ -44,14 +33,7 @@
             android:textColor="#ff000000"
             android:textSize="15sp" />
 
-        <TextView
-            android:id="@+id/tv_username"
-            style="@style/chat_text_name_style"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
-            android:layout_below="@id/iv_userhead"
-            android:layout_toLeftOf="@id/tv_chatcontent" />
+
     </RelativeLayout>
 
 </LinearLayout>
