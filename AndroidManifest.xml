@@ -5,7 +5,8 @@
           android:versionName="1.0">
     <uses-sdk android:minSdkVersion="11"/>
 
-    <application android:label="imservice">
+    <application android:label="imservice"
+                 android:name=".IMApplication">
         <activity android:name=".LoginActivity"
                   android:label="imservice">
             <intent-filter>

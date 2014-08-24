@@ -34,16 +34,6 @@ public class LoginActivity extends Activity{
         super.onCreate(savedInstanceState);
         setContentView(R.layout.login);
 
-        PeerMessageDB db = PeerMessageDB.getInstance();
-        db.setDir(this.getDir("peer", MODE_PRIVATE));
-
-        ContactDB cdb = ContactDB.getInstance();
-        cdb.setContentResolver(getApplicationContext().getContentResolver());
-
-        LevelDB ldb = LevelDB.getDefaultDB();
-        String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
-        ldb.open(dir);
-
         phoneText = (EditText)findViewById(R.id.login_edit_userName);
         codeText = (EditText)findViewById(R.id.login_edit_password);
 
