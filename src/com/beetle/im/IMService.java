@@ -1,4 +1,5 @@
 package com.beetle.im;
+
 import android.util.Log;
 import com.beetle.AsyncTCP;
 import com.beetle.TCPConnectCallback;
@@ -8,6 +9,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+
 
 import static android.os.SystemClock.uptimeMillis;
 
@@ -45,6 +47,7 @@ public class IMService {
     IMPeerMessageHandler peerMessageHandler;
     ArrayList<IMServiceObserver> observers = new ArrayList<IMServiceObserver>();
     HashMap<Integer, IMMessage> peerMessages = new HashMap<Integer, IMMessage>();
+    private HashMap<Long, Boolean> subs = new HashMap<Long, Boolean>();
 
     private byte[] data;
 
@@ -126,6 +129,37 @@ public class IMService {
         return true;
     }
 
+    //订阅用户在线状态通知消息
+    public void subscribeState(long uid) {
+        Long n = new Long(uid);
+        if (!subs.containsKey(n)) {
+            MessageSubscribe sub = new MessageSubscribe();
+            sub.uids = new ArrayList<Long>();
+            sub.uids.add(n);
+            if (sendSubscribe(sub)) {
+                subs.put(n, new Boolean(false));
+            }
+        } else {
+            Boolean online = subs.get(n);
+            for (int i = 0; i < observers.size(); i++ ) {
+                IMServiceObserver ob = observers.get(i);
+                ob.onOnlineState(uid, online);
+            }
+        }
+    }
+
+    public void unsubscribeState(long uid) {
+        Long n = new Long(uid);
+        subs.remove(n);
+    }
+
+    private boolean sendSubscribe(MessageSubscribe sub) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_SUBSCRIBE_ONLINE_STATE;
+        msg.body = sub;
+        return sendMessage(msg);
+    }
+
     private void close() {
         if (this.tcp != null) {
             this.tcp.close();
@@ -172,6 +206,7 @@ public class IMService {
                     IMService.this.connectState = ConnectState.STATE_CONNECTED;
                     IMService.this.sendAuth();
                     IMService.this.tcp.startRead();
+                    subs.clear();
                 }
             }
         });
@@ -259,6 +294,14 @@ public class IMService {
         }
     }
 
+    private void handleInputting(Message msg) {
+        MessageInputing inputting = (MessageInputing)msg.body;
+        for (int i = 0; i < observers.size(); i++ ) {
+            IMServiceObserver ob = observers.get(i);
+            ob.onPeerInputting(inputting.sender);
+        }
+    }
+
     private void handleMessage(Message msg) {
         if (msg.cmd == Command.MSG_AUTH_STATUS) {
             handleAuthStatus(msg);
@@ -270,6 +313,8 @@ public class IMService {
             handleOnlineState(msg);
         } else if (msg.cmd == Command.MSG_PEER_ACK) {
             handlePeerACK(msg);
+        } else if (msg.cmd == Command.MSG_INPUTTING) {
+            handleInputting(msg);
         } else {
             Log.i(TAG, "unknown message cmd:"+msg.cmd);
         }

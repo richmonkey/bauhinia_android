@@ -1,5 +1,6 @@
 package com.example.imservice;
 
+import android.app.ActionBar;
 import android.app.Activity;
 
 import android.content.Context;
@@ -15,11 +16,17 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
+import com.example.imservice.model.Contact;
+import com.example.imservice.model.ContactDB;
+import com.example.imservice.model.User;
+import com.example.imservice.model.UserDB;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Date;
+
+import static android.os.SystemClock.uptimeMillis;
 
 
 public class IMActivity extends Activity implements IMServiceObserver {
@@ -28,12 +35,19 @@ public class IMActivity extends Activity implements IMServiceObserver {
     private long currentUID;
 
     private long peerUID;
+    private User peer;
+
     private ArrayList<IMessage> messages;
 
     private static final int IN_MSG = 0;
     private static final int OUT_MSG = 1;
 
     private EditText editText;
+
+    private TextView titleView;
+    private TextView subtitleView;
+
+    private ActionBar actionBar;
 
     BaseAdapter adapter;
     class ChatAdapter extends BaseAdapter {
@@ -96,6 +110,11 @@ public class IMActivity extends Activity implements IMServiceObserver {
             Log.e(TAG, "peer uid is 0");
             return;
         }
+        peer = loadUser(peerUID);
+        if (peer == null) {
+            Log.e(TAG, "load user fail");
+            return;
+        }
         messages = new ArrayList<IMessage>();
 
         PeerMessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID);
@@ -112,14 +131,61 @@ public class IMActivity extends Activity implements IMServiceObserver {
         lv.setAdapter(adapter);
         editText = (EditText)findViewById(R.id.et_sendmessage);
 
+        actionBar=getActionBar();
+        actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
+        actionBar.setCustomView(R.layout.im_actionbar);
+        actionBar.show();
+        titleView = (TextView)actionBar.getCustomView().findViewById(R.id.title);
+        subtitleView = (TextView)actionBar.getCustomView().findViewById(R.id.subtitle);
+        titleView.setText(peer.name);
+        setSubtitle();
         IMService.getInstance().addObserver(this);
+        IMService.getInstance().subscribeState(peer.uid);
     }
+
+    private User loadUser(long uid) {
+        User u = UserDB.getInstance().loadUser(uid);
+        if (u == null) {
+            return null;
+        }
+        Contact c = ContactDB.getInstance().loadContact(u.number);
+        if (c == null) {
+            u.name = u.number.getNumber();
+        } else {
+            u.name = c.displayName;
+        }
+        return u;
+    }
+
+    private void setSubtitle() {
+        IMService.ConnectState state = IMService.getInstance().getConnectState();
+        if (state == IMService.ConnectState.STATE_CONNECTING) {
+            setSubtitle("连线中");
+        } else if (state == IMService.ConnectState.STATE_CONNECTFAIL ||
+                state == IMService.ConnectState.STATE_UNCONNECTED) {
+            setSubtitle("未连接");
+        } else {
+            setSubtitle("");
+        }
+    }
+
+    private void setSubtitle(String subtitle) {
+        subtitleView.setText(subtitle);
+        if (subtitle.length() > 0) {
+            subtitleView.setVisibility(View.VISIBLE);
+        } else {
+            subtitleView.setVisibility(View.GONE);
+        }
+    }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
         Log.i(TAG, "imactivity destory");
         IMService.getInstance().removeObserver(this);
+        IMService.getInstance().unsubscribeState(peerUID);
     }
+
     public static int now() {
         Date date = new Date();
         long t = date.getTime();
@@ -163,14 +229,37 @@ public class IMActivity extends Activity implements IMServiceObserver {
     }
 
     public void onConnectState(IMService.ConnectState state) {
-
+        if (state == IMService.ConnectState.STATE_CONNECTING) {
+            titleView.setText("连线中");
+        } else if (state == IMService.ConnectState.STATE_CONNECTFAIL ||
+                state == IMService.ConnectState.STATE_UNCONNECTED) {
+            titleView.setText("未连接");
+        }
     }
 
     public void onPeerInputting(long uid) {
-
+        if (uid == peerUID) {
+            setSubtitle("对方正在输入");
+            Timer t = new Timer() {
+                @Override
+                protected void fire() {
+                    setSubtitle();
+                }
+            };
+            long start = uptimeMillis() + 10*1000;
+            t.setTimer(start);
+            t.resume();
+        }
     }
-    public void onOnlineState(long uid, boolean on) {
 
+    public void onOnlineState(long uid, boolean on) {
+        if (uid == peerUID) {
+            if (on) {
+                setSubtitle("对方在线");
+            } else {
+                setSubtitle("");
+            }
+        }
     }
 
     public void onPeerMessage(IMMessage msg) {
