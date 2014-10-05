@@ -5,31 +5,28 @@ import android.app.Activity;
 
 import android.content.Context;
 import android.content.Intent;
-import android.database.Cursor;
-import android.hardware.input.InputManager;
 import android.os.*;
-import android.provider.ContactsContract;
-import android.provider.UserDictionary;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
+import com.example.imservice.constant.MessageKeys;
+import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.ContactDB;
 import com.example.imservice.model.User;
 import com.example.imservice.model.UserDB;
+import com.google.gson.JsonObject;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Date;
 
 import static android.os.SystemClock.uptimeMillis;
 
 
-public class IMActivity extends Activity implements IMServiceObserver {
+public class IMActivity extends Activity implements IMServiceObserver, MessageKeys {
     private final String TAG = "imservice";
 
     private long currentUID;
@@ -92,7 +89,7 @@ public class IMActivity extends Activity implements IMServiceObserver {
             }
 
             TextView content = (TextView)convertView.findViewById(R.id.tv_chatcontent);
-            content.setText(msg.content.getText());
+            content.setText(MessageFormatter.messageContentToString(msg.content));
             return convertView;
         }
     }
@@ -201,13 +198,14 @@ public class IMActivity extends Activity implements IMServiceObserver {
         IMMessage msg = new IMMessage();
         msg.sender = this.currentUID;
         msg.receiver = peerUID;
-        msg.content = text;
+        JsonObject textContent = new JsonObject();
+        textContent.addProperty(TEXT, text);
+        msg.content = textContent.toString();
 
         IMessage imsg = new IMessage();
         imsg.sender = msg.sender;
         imsg.receiver = msg.receiver;
-        imsg.content = new IMessage.MessageContent();
-        imsg.content.raw = msg.content;
+        imsg.setContent(msg.content);
         imsg.timestamp = now();
         PeerMessageDB.getInstance().insertMessage(imsg, msg.receiver);
 
@@ -272,8 +270,7 @@ public class IMActivity extends Activity implements IMServiceObserver {
         imsg.msgLocalID = msg.msgLocalID;
         imsg.sender = msg.sender;
         imsg.receiver = msg.receiver;
-        imsg.content = new IMessage.MessageContent();
-        imsg.content.raw = msg.content;
+        imsg.setContent(msg.content);
         messages.add(imsg);
 
         adapter.notifyDataSetChanged();

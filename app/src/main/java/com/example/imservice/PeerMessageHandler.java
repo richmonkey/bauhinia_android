@@ -27,8 +27,7 @@ public class PeerMessageHandler implements IMPeerMessageHandler {
         imsg.timestamp = now();
         imsg.sender = msg.sender;
         imsg.receiver = msg.receiver;
-        imsg.content = new IMessage.MessageContent();
-        imsg.content.raw = msg.content;
+        imsg.setContent(msg.content);
         return db.insertMessage(imsg, msg.sender);
     }
 

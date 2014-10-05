@@ -101,8 +101,7 @@ testUserDB();
         IMessage msg = new IMessage();
         msg.sender = 86013635273143L;
         msg.receiver = 86013635273142L;
-        msg.content = new IMessage.MessageContent();
-        msg.content.raw = "11";
+        msg.setContent("11");
         boolean r = db.insertMessage(msg, msg.receiver);
         Log.i(TAG, "insert:" + r);
 

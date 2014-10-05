@@ -112,8 +112,7 @@ public class MessageDB {
             pos += 8;
             msg.receiver = BytePacket.readInt64(buf, pos);
             pos += 8;
-            msg.content = new IMessage.MessageContent();
-            msg.content.raw = new String(buf, pos, len - 24, "UTF-8");
+            msg.setContent(new String(buf, pos, len - 24, "UTF-8"));
             return msg;
         } catch (Exception e) {
             Log.e("imservice", "read file exception:" + e);

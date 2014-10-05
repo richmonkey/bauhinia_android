@@ -16,6 +16,7 @@ import android.widget.*;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
+import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.ContactDB;
 import com.example.imservice.model.User;
@@ -68,7 +69,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
             tv.setText(c.name);
 
             tv = (TextView)view.findViewById(R.id.content);
-            tv.setText(c.message.content.getText());
+            tv.setText(MessageFormatter.messageContentToString(c.message.content));
             return view;
         }
     }
@@ -104,6 +105,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
     @Override
     public void onBackPressed() {
         //禁用返回键
+        moveTaskToBack(true);
     }
 
     @Override
@@ -122,6 +124,11 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         im.addObserver(this);
         im.start();
 
+        refreshConversations();
+        initWidget();
+    }
+
+    void refreshConversations() {
         conversations = new ArrayList<Conversation>();
         ConversationIterator iter = PeerMessageDB.getInstance().newConversationIterator();
         while (true) {
@@ -132,7 +139,6 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
             conv.name = getUserName(conv.cid);
             conversations.add(conv);
         }
-        initWidget();
     }
 
     private String getUserName(long uid) {
@@ -174,7 +180,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
         Notification mNotification = new Notification.Builder(this)
                 .setContentTitle(name)
-                .setContentText(msg.content.getText())
+                .setContentText(MessageFormatter.messageContentToString(msg.content))
                 .setSmallIcon(R.drawable.xiaohei)
                 .setContentIntent(pIntent)
                 .setSound(soundUri)
@@ -225,8 +231,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         imsg.msgLocalID = msg.msgLocalID;
         imsg.sender = msg.sender;
         imsg.receiver = msg.receiver;
-        imsg.content = new IMessage.MessageContent();
-        imsg.content.raw = msg.content;
+        imsg.setContent(msg.content);
         conversation.message = imsg;
 
         adapter.notifyDataSetChanged();
@@ -243,12 +248,12 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
     }
 
     public void onPeerMessageACK(int msgLocalID, long uid) {
-
+        Log.i(TAG, "message ack on main");
+        refreshConversations();
+        adapter.notifyDataSetChanged();
     }
     public void onPeerMessageRemoteACK(int msgLocalID, long uid) {
-
     }
     public void onPeerMessageFailure(int msgLocalID, long uid) {
-
     }
 }
