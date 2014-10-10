@@ -1,7 +1,7 @@
 package com.example.imservice;
 
-import com.beetle.im.Timer;
 import com.google.code.p.leveldb.LevelDB;
+import com.google.gson.annotations.SerializedName;
 
 /**
  * Created by houxh on 14-8-11.
@@ -16,12 +16,13 @@ public class Token {
         return instance;
     }
 
+    @SerializedName("access_token")
     public String accessToken;
+    @SerializedName("refresh_token")
     public String refreshToken;
+    @SerializedName("expires_in")
     public int expireTimestamp;
     public long uid;
-
-    private Timer timer;
 
     public void save() {
         LevelDB db = LevelDB.getDefaultDB();
@@ -45,12 +46,5 @@ public class Token {
         } catch(Exception e) {
             e.printStackTrace();
         }
-    }
-
-    public void startRefreshTimer() {
-
-    }
-    public void stopRefreshTimer() {
-
     }
 }

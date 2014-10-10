@@ -1,34 +1,31 @@
 package com.example.imservice;
 
-import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.Message;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
-import com.beetle.im.Timer;
-import com.example.imservice.model.ContactDB;
+import com.example.imservice.activity.BaseActivity;
+import com.example.imservice.api.body.PostAuthToken;
+import com.example.imservice.api.types.Code;
 import com.example.imservice.model.PhoneNumber;
 import com.example.imservice.model.User;
 import com.example.imservice.model.UserDB;
-import com.google.code.p.leveldb.LevelDB;
 
-import java.io.File;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 
-import static android.os.SystemClock.uptimeMillis;
 /**
  * Created by houxh on 14-8-11.
  */
-public class LoginActivity extends Activity{
+public class LoginActivity extends BaseActivity {
     private final String TAG = "imservice";
 
     private EditText phoneText;
     private EditText codeText;
-    private Handler handler = new Handler();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -57,25 +54,15 @@ public class LoginActivity extends Activity{
 
         final ProgressDialog dialog = ProgressDialog.show(this, null, "Request...");
 
-        Thread thread = new Thread() {
-            @Override
-            public void run() {
-                final Token token = APIRequest.requestAuthToken("86", phone, code);
-                if (token == null) {
-                    Log.i(TAG, "auth token fail");
-                    final Runnable r = new Runnable() {
-                        @Override
-                        public void run() {
-                            dialog.dismiss();
-                            Toast.makeText(getApplicationContext(), "登录失败", Toast.LENGTH_SHORT).show();
-                        }
-                    };
-                    handler.post(r);
-                    return;
-                }
-                final Runnable r = new Runnable() {
+        PostAuthToken postAuthToken = new PostAuthToken();
+        postAuthToken.code = code;
+        postAuthToken.zone = "86";
+        postAuthToken.number = phone;
+        imHttp.postAuthToken(postAuthToken)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<Token>() {
                     @Override
-                    public void run() {
+                    public void call(Token token) {
                         dialog.dismiss();
                         Token t = Token.getInstance();
                         t.accessToken = token.accessToken;
@@ -93,12 +80,15 @@ public class LoginActivity extends Activity{
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         startActivity(intent);
                     }
-                };
-                handler.post(r);
-                Log.i(TAG, "code:" + code);
-            }
-        };
-        thread.start();
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        Log.i(TAG, "auth token fail");
+                        dialog.dismiss();
+                        Toast.makeText(getApplicationContext(), "登录失败", Toast.LENGTH_SHORT).show();
+                    }
+                });
+        Log.i(TAG, "code:" + code);
     }
 
     public void getVerifyCode(View v) {
@@ -110,33 +100,22 @@ public class LoginActivity extends Activity{
         }
 
         final ProgressDialog dialog = ProgressDialog.show(this, null, "Request...");
-        Thread thread = new Thread() {
-            @Override
-            public void run() {
-                final String code = APIRequest.requestVerifyCode("86", phone);
-                if (code == null || code.length() == 0) {
-                    Log.i(TAG, "request code fail");
-                    final Runnable r = new Runnable() {
-                        @Override
-                        public void run() {
-                            dialog.dismiss();
-                            Toast.makeText(getApplicationContext(), "获取验证码失败", Toast.LENGTH_SHORT).show();
-                        }
-                    };
-                    handler.post(r);
-                    return;
-                }
-                final Runnable r = new Runnable() {
+        imHttp.postVerifyCode("86", phone)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<Code>() {
                     @Override
-                    public void run() {
+                    public void call(Code code) {
                         dialog.dismiss();
-                        codeText.setText(code);
+                        codeText.setText(code.code);
+                        Log.i(TAG, "code:" + code.code);
                     }
-                };
-                handler.post(r);
-                Log.i(TAG, "code:" + code);
-            }
-        };
-        thread.start();
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        Log.i(TAG, "request code fail");
+                        dialog.dismiss();
+                        Toast.makeText(getApplicationContext(), "获取验证码失败", Toast.LENGTH_SHORT).show();
+                    }
+                });
     }
 }
