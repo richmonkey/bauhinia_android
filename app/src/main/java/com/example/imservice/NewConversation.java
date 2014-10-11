@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 
+import butterknife.ButterKnife;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 
@@ -57,6 +58,8 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
             TextView tv = (TextView) view.findViewById(R.id.name);
             User c = users.get(position);
             tv.setText(c.name);
+            TextView content = ButterKnife.findById(view, R.id.content);
+            content.setText(c.number);
             return view;
         }
     }
@@ -101,31 +104,6 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
 
     void getUsers() {
         final ArrayList<Contact> contacts = ContactDB.getInstance().copyContacts();
-
-        /*
-        Thread t = new Thread() {
-            @Override
-            public void run() {
-                final ArrayList<User> users = APIRequest.requestUsers(contacts);
-                if (users == null || users.size() == 0) {
-                    return;
-                }
-
-                handler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        UserDB userDB = UserDB.getInstance();
-                        for (int i = 0; i < users.size(); i++) {
-                            userDB.addUser(users.get(i));
-                        }
-                        loadUsers();
-                        adapter.notifyDataSetChanged();
-                    }
-                });
-            }
-        };
-        t.start();
-        */
 
         List<PostPhone> phoneList = new ArrayList<PostPhone>();
         HashSet<String> sets = new HashSet<String>();
