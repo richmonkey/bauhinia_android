@@ -226,7 +226,9 @@ public class APIRequest {
                 User u = new User();
                 String z = o.getString("zone");
                 String n = o.getString("number");
-                u.number = new PhoneNumber(z, n);
+                //u.number = new PhoneNumber(z, n);
+                u.zone = z;
+                u.number = n;
                 u.uid = o.getLong("uid");
                 users.add(u);
             }

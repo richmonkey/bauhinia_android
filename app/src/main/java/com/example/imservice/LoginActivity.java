@@ -3,7 +3,6 @@ package com.example.imservice;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
@@ -64,16 +63,14 @@ public class LoginActivity extends BaseActivity {
                     @Override
                     public void call(Token token) {
                         dialog.dismiss();
-                        Token t = Token.getInstance();
-                        t.accessToken = token.accessToken;
-                        t.refreshToken = token.refreshToken;
-                        t.expireTimestamp = token.expireTimestamp;
-                        t.uid = token.uid;
-                        t.save();
+
+                        onTokenRefreshed(token);
 
                         User u = new User();
-                        u.uid = t.uid;
-                        u.number = new PhoneNumber("86", phone);
+                        u.uid = token.uid;
+                        //u.number = new PhoneNumber("86", phone);
+                        u.number = phone;
+                        u.zone = "86";
                         UserDB.getInstance().addUser(u);
 
                         Intent intent = new Intent(LoginActivity.this, MainActivity.class);
@@ -100,7 +97,7 @@ public class LoginActivity extends BaseActivity {
         }
 
         final ProgressDialog dialog = ProgressDialog.show(this, null, "Request...");
-        imHttp.postVerifyCode("86", phone)
+        imHttp.getVerifyCode("86", phone)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<Code>() {
                     @Override

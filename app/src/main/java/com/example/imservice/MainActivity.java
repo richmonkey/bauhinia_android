@@ -19,6 +19,7 @@ import com.beetle.im.IMServiceObserver;
 import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.ContactDB;
+import com.example.imservice.model.PhoneNumber;
 import com.example.imservice.model.User;
 import com.example.imservice.model.UserDB;
 import com.google.code.p.leveldb.LevelDB;
@@ -143,9 +144,9 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     private String getUserName(long uid) {
         User u = UserDB.getInstance().loadUser(uid);
-        Contact c = ContactDB.getInstance().loadContact(u.number);
+        Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
         if (c == null) {
-            return u.number.getNumber();
+            return u.number;
         } else {
             return c.displayName;
         }

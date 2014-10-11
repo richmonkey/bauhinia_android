@@ -20,10 +20,14 @@ public class UserDB {
         try {
             String zoneNumber = db.get(key + "_number");
             if (zoneNumber != null && zoneNumber.length() > 0) {
-                u.number = new PhoneNumber(zoneNumber);
+                PhoneNumber phoneNumber = new PhoneNumber(zoneNumber);
+                u.number = phoneNumber.getNumber();
+                u.zone = phoneNumber.getZone();
             } else {
                 String[] t = ("" + uid).split("0");
-                u.number = new PhoneNumber(t[0], t[1]);
+                PhoneNumber phoneNumber = new PhoneNumber(t[0], t[1]);
+                u.number = phoneNumber.getNumber();
+                u.zone = phoneNumber.getZone();
             }
             return u;
         } catch (Exception e) {
@@ -50,9 +54,10 @@ public class UserDB {
         String key = getUserKey(user.uid);
 
         try {
-            if (user.number.isValid()) {
-                db.set(key + "_number", user.number.getZoneNumber());
-                db.setLong("numbers_" + user.number.getZoneNumber(), user.uid);
+            PhoneNumber phoneNumber = new PhoneNumber(user.zone, user.number);
+            if (phoneNumber.isValid()) {
+                db.set(key + "_number", phoneNumber.getZoneNumber());
+                db.setLong("numbers_" + phoneNumber.getZoneNumber(), user.uid);
             }
 
             return true;

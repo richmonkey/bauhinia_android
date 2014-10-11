@@ -27,8 +27,8 @@ import rx.Observable;
  * Created by tsung on 10/10/14.
  */
 public interface IMHttp {
-    @POST("/verify_code")
-    Observable<Code> postVerifyCode(@Query("zone") String zone, @Query("number") String number);
+    @GET("/verify_code")
+    Observable<Code> getVerifyCode(@Query("zone") String zone, @Query("number") String number);
 
     @POST("/auth/token")
     Observable<Token> postAuthToken(@Body PostAuthToken code);
@@ -54,6 +54,6 @@ public interface IMHttp {
     @PUT("/users/me/state")
     Observable<Object> putUsersMeState(@Body PostTextValue state);
 
-    @GET("/users")
-    Observable<ArrayList<User>> getUsers(@Body List<PostPhone> phones);
+    @POST("/users")
+    Observable<ArrayList<User>> postUsers(@Body List<PostPhone> phones);
 }

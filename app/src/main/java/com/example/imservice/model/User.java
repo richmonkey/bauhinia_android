@@ -5,7 +5,8 @@ package com.example.imservice.model;
  */
 public class User {
     public long uid;
-    public PhoneNumber number;
+    //public PhoneNumber number;
+    public String number;
     public String name;//来自联系人
     public String avatar;
     public String zone;

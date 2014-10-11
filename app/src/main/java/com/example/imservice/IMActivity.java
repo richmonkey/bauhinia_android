@@ -1,7 +1,6 @@
 package com.example.imservice;
 
 import android.app.ActionBar;
-import android.app.Activity;
 
 import android.content.Context;
 import android.content.Intent;
@@ -12,10 +11,12 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
+import com.example.imservice.activity.BaseActivity;
 import com.example.imservice.constant.MessageKeys;
 import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.ContactDB;
+import com.example.imservice.model.PhoneNumber;
 import com.example.imservice.model.User;
 import com.example.imservice.model.UserDB;
 import com.google.gson.JsonObject;
@@ -26,7 +27,7 @@ import java.util.Date;
 import static android.os.SystemClock.uptimeMillis;
 
 
-public class IMActivity extends Activity implements IMServiceObserver, MessageKeys {
+public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys {
     private final String TAG = "imservice";
 
     private long currentUID;
@@ -145,9 +146,9 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         if (u == null) {
             return null;
         }
-        Contact c = ContactDB.getInstance().loadContact(u.number);
+        Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
         if (c == null) {
-            u.name = u.number.getNumber();
+            u.name = u.number;
         } else {
             u.name = c.displayName;
         }

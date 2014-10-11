@@ -131,11 +131,14 @@ testUserDB();
     private void testUserDB() {
         User u = new User();
         u.uid = 86013635273142L;
-        u.number = new PhoneNumber("86_13635273142");
+        //u.number = new PhoneNumber("86_13635273142");
+        u.number = "13635273142";
+        u.zone = "86";
         UserDB db = UserDB.getInstance();
         db.addUser(u);
         User u2 = db.loadUser(u.uid);
-        Log.i(TAG, "" + u2.number.getZone() + " " + u2.number.getNumber());
+        //Log.i(TAG, "" + u2.number.getZone() + " " + u2.number.getNumber());
+        Log.i(TAG, "" + u2.zone + " " + u2.number);
     }
     public static int now() {
         Date date = new Date();
