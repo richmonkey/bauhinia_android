@@ -3,9 +3,8 @@ package com.example.imservice;
 import android.util.Log;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.PhoneNumber;
-import com.example.imservice.model.User;
+import com.example.imservice.api.types.User;
 import org.apache.http.Header;
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
@@ -22,7 +21,6 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Set;
 
 /**
  * Created by houxh on 14-8-11.

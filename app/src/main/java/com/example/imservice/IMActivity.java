@@ -17,7 +17,7 @@ import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.ContactDB;
 import com.example.imservice.model.PhoneNumber;
-import com.example.imservice.model.User;
+import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
 import com.google.gson.JsonObject;
 

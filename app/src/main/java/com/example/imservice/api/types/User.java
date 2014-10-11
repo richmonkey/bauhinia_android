@@ -1,4 +1,4 @@
-package com.example.imservice.model;
+package com.example.imservice.api.types;
 
 /**
  * Created by houxh on 14-8-11.

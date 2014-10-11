@@ -1,5 +1,6 @@
 package com.example.imservice.model;
 
+import com.example.imservice.api.types.User;
 import com.google.code.p.leveldb.LevelDB;
 
 /**

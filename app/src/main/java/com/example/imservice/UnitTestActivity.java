@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
 import com.beetle.im.BytePacket;
+import com.example.imservice.api.types.User;
 import com.example.imservice.model.*;
 import com.google.code.p.leveldb.LevelDB;
 

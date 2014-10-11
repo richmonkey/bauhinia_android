@@ -8,7 +8,7 @@ import com.example.imservice.api.body.PostTextValue;
 import com.example.imservice.api.types.Audio;
 import com.example.imservice.api.types.Code;
 import com.example.imservice.api.types.Image;
-import com.example.imservice.model.User;
+import com.example.imservice.api.types.User;
 
 import java.util.ArrayList;
 import java.util.List;

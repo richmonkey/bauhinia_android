@@ -10,8 +10,7 @@ import android.widget.Toast;
 import com.example.imservice.activity.BaseActivity;
 import com.example.imservice.api.body.PostAuthToken;
 import com.example.imservice.api.types.Code;
-import com.example.imservice.model.PhoneNumber;
-import com.example.imservice.model.User;
+import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
 
 import rx.android.schedulers.AndroidSchedulers;

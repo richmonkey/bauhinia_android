@@ -12,6 +12,7 @@ import android.widget.TextView;
 
 import com.example.imservice.activity.BaseActivity;
 import com.example.imservice.api.body.PostPhone;
+import com.example.imservice.api.types.User;
 import com.example.imservice.model.*;
 
 import java.util.ArrayList;
