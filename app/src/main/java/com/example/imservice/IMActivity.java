@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.*;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -20,9 +22,12 @@ import com.example.imservice.model.PhoneNumber;
 import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
 import com.google.gson.JsonObject;
+import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.Date;
+
+import butterknife.ButterKnife;
 
 import static android.os.SystemClock.uptimeMillis;
 
@@ -48,7 +53,16 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     private ActionBar actionBar;
 
     BaseAdapter adapter;
-    class ChatAdapter extends BaseAdapter {
+
+    static interface ContentTypes {
+        public static int UNKNOWN = 0;
+        public static int AUDIO = 2;
+        public static int IMAGE = 4;
+        public static int LOCATION = 6;
+        public static int TEXT = 8;
+    }
+
+    class ChatAdapter extends BaseAdapter implements ContentTypes {
         @Override
         public int getCount() {
             return messages.size();
@@ -64,33 +78,84 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
         @Override
         public int getItemViewType(int position) {
-            IMessage msg = messages.get(position);
-            if (msg.sender == currentUID) {
-                return OUT_MSG;
+            final int basic;
+            if (isOutMsg(position)) {
+                basic = OUT_MSG;
             } else {
-                return IN_MSG;
+                basic = IN_MSG;
             }
+
+
+            return getMediaType(position) + basic;
         }
+
+        int getMediaType(int position) {
+            IMessage msg = messages.get(position);
+            final int media;
+            if (msg.content instanceof IMessage.Text) {
+                media = TEXT;
+            } else if (msg.content instanceof IMessage.Image) {
+                media = IMAGE;
+            } else if (msg.content instanceof IMessage.Audio) {
+                media = AUDIO;
+            } else if (msg.content instanceof IMessage.Location) {
+                media = LOCATION;
+            } else {
+                media = UNKNOWN;
+            }
+
+            return media;
+        }
+
+        boolean isOutMsg(int position) {
+            IMessage msg = messages.get(position);
+            return msg.sender == currentUID;
+        }
+
         @Override
         public int getViewTypeCount() {
-            return 2;
+            return 10;
         }
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             IMessage msg = messages.get(position);
             if (convertView == null) {
-                if (getItemViewType(position) == IN_MSG) {
+                if (isOutMsg(position)) {
                     convertView = getLayoutInflater().inflate(
-                            R.layout.chatting_item_msg_text_left, null);
+                            R.layout.chat_container_right, null);
                 } else {
                     convertView = getLayoutInflater().inflate(
-                            R.layout.chatting_item_msg_text_right, null);
+                            R.layout.chat_container_left, null);
                 }
+
+                ViewGroup group = ButterKnife.findById(convertView, R.id.content);
+                final int contentLayout;
+                switch (getMediaType(position)) {
+                    case TEXT:
+                    case UNKNOWN:
+                    default:
+                        contentLayout = R.layout.chat_content_text;
+                        break;
+                    case IMAGE:
+                        contentLayout = R.layout.chat_content_image;
+                        break;
+                }
+                group.addView(getLayoutInflater().inflate(contentLayout, group, false));
             }
 
-            TextView content = (TextView)convertView.findViewById(R.id.tv_chatcontent);
-            content.setText(MessageFormatter.messageContentToString(msg.content));
+            switch (getMediaType(position)) {
+                case IMAGE:
+                    ImageView imageView = ButterKnife.findById(convertView, R.id.image);
+                    Picasso.with(getBaseContext())
+                            .load(((IMessage.Image)msg.content).image)
+                            .into(imageView);
+                    break;
+                default:
+                    TextView content = (TextView)convertView.findViewById(R.id.text);
+                    content.setText(MessageFormatter.messageContentToString(msg.content));
+                    break;
+            }
             return convertView;
         }
     }
@@ -140,6 +205,24 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         IMService.getInstance().addObserver(this);
         IMService.getInstance().subscribeState(peer.uid);
     }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.chat, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_photo) {
+            return true;
+        } else if(id == R.id.action_take) {
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
 
     private User loadUser(long uid) {
         User u = UserDB.getInstance().loadUser(uid);

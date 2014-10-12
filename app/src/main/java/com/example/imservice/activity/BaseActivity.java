@@ -24,7 +24,7 @@ public class BaseActivity extends Activity {
         super.onResume();
 
         if (!TextUtils.isEmpty(Token.getInstance().refreshToken)) {
-            refreshToken();
+            //refreshToken();
         }
     }
 
