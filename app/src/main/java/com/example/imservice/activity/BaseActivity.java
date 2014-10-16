@@ -8,6 +8,7 @@ import com.example.imservice.Token;
 import com.example.imservice.api.IMHttp;
 import com.example.imservice.api.IMHttpFactory;
 import com.example.imservice.api.body.PostAuthRefreshToken;
+import com.example.imservice.constant.RequestCodes;
 
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
@@ -15,7 +16,7 @@ import rx.functions.Action1;
 /**
  * Created by tsung on 10/10/14.
  */
-public class BaseActivity extends Activity {
+public class BaseActivity extends Activity implements RequestCodes {
     protected final IMHttp imHttp = IMHttpFactory.Singleton();
     protected Handler handler = new Handler();
 

@@ -71,6 +71,10 @@ public class IMessage implements MessageKeys {
         content.raw = raw;
     }
 
+    public void setContent(MessageContent content) {
+        this.content = content;
+    }
+
     public int msgLocalID;
     public int flags;
     public long sender;

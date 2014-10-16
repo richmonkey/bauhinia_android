@@ -4,6 +4,9 @@ import android.app.ActionBar;
 
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.*;
 import android.util.Log;
 import android.view.Menu;
@@ -14,6 +17,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
 import com.example.imservice.activity.BaseActivity;
+import com.example.imservice.api.types.Image;
 import com.example.imservice.constant.MessageKeys;
 import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
@@ -24,10 +28,16 @@ import com.example.imservice.model.UserDB;
 import com.google.gson.JsonObject;
 import com.squareup.picasso.Picasso;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
 
 import butterknife.ButterKnife;
+import retrofit.mime.TypedFile;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 
 import static android.os.SystemClock.uptimeMillis;
 
@@ -216,6 +226,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
         if (id == R.id.action_photo) {
+            getPicture();
             return true;
         } else if(id == R.id.action_take) {
             return true;
@@ -369,5 +380,113 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     }
     public void onPeerMessageFailure(int msgLocalID, long uid) {
 
+    }
+
+    void getPicture() {
+        if (Build.VERSION.SDK_INT <19){
+            Intent intent = new Intent();
+            intent.setType("image/*");
+            intent.setAction(Intent.ACTION_GET_CONTENT);
+            startActivityForResult(Intent.createChooser(intent
+                    , getResources().getString(R.string.product_fotos_get_from))
+                    , SELECT_PICTURE);
+        } else {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("image/*");
+            startActivityForResult(intent, SELECT_PICTURE_KITKAT);
+        }
+
+    }
+
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (resultCode != RESULT_OK) {
+            return;
+        }
+
+        if (requestCode == SELECT_PICTURE || requestCode == SELECT_PICTURE_KITKAT) {
+            Uri selectedImageUri = data.getData();
+            onImageUri(selectedImageUri);
+        }
+    }
+
+    void onImageUri(Uri selectedImageUri) {
+        try {
+            InputStream is = getContentResolver().openInputStream(selectedImageUri);
+
+            final int maxSize = 1024;
+            BitmapFactory.Options o = new BitmapFactory.Options();
+            o.inJustDecodeBounds = true;
+            BitmapFactory.decodeStream(is,null, o);
+
+            o.inJustDecodeBounds = false;
+            if (o.outWidth > maxSize || o.outHeight > maxSize) {
+                int width_tmp=o.outWidth, height_tmp=o.outHeight;
+                int scale=1;
+                while(true)
+                {
+                    if(width_tmp/2<maxSize && height_tmp/2<maxSize)
+                        break;
+                    width_tmp/=2;
+                    height_tmp/=2;
+                    scale*=2;
+                }
+                o.inSampleSize = scale;
+            }
+
+            Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(selectedImageUri), null, o);
+            is.close();
+
+            File file = File.createTempFile("temp_foto", ".jpg", null);
+            FileOutputStream fos = new FileOutputStream(file);
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
+            bitmap.recycle();
+            fos.flush();
+            fos.close();
+
+            TypedFile typedFile = new TypedFile("image/jpeg", file);
+            imHttp.postImages(typedFile)
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new Action1<Image>() {
+                        @Override
+                        public void call(Image image) {
+                            onImage(image);
+                        }
+                    }, new Action1<Throwable>() {
+                        @Override
+                        public void call(Throwable throwable) {
+
+                        }
+                    });
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    void onImage(Image image) {
+        IMMessage msg = new IMMessage();
+        msg.sender = this.currentUID;
+        msg.receiver = peerUID;
+        JsonObject content = new JsonObject();
+        content.addProperty(IMAGE, image.srcUrl);
+        msg.content = content.toString();
+
+        IMessage imsg = new IMessage();
+        imsg.sender = msg.sender;
+        imsg.receiver = msg.receiver;
+        imsg.setContent(msg.content);
+        imsg.timestamp = now();
+        PeerMessageDB.getInstance().insertMessage(imsg, msg.receiver);
+
+        msg.msgLocalID = imsg.msgLocalID;
+        Log.i(TAG, "msg local id:" + imsg.msgLocalID);
+        IMService im = IMService.getInstance();
+        im.sendPeerMessage(msg);
+
+        messages.add(imsg);
+
+        adapter.notifyDataSetChanged();
+        ListView lv = (ListView)findViewById(R.id.listview);
+        lv.smoothScrollToPosition(messages.size()-1);
     }
 }
