@@ -102,6 +102,10 @@ public class IMService {
     }
 
     public void start() {
+        if (this.uid == 0) {
+            throw new RuntimeException("NO UID PROVIDED");
+        }
+
         this.stopped = false;
         connectTimer.setTimer(uptimeMillis());
         connectTimer.resume();

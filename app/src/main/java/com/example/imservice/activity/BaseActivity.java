@@ -52,7 +52,10 @@ public class BaseActivity extends Activity implements RequestCodes {
         t.accessToken = token.accessToken;
         t.refreshToken = token.refreshToken;
         t.expireTimestamp = token.expireTimestamp;
-        t.uid = token.uid;
+        if (token.uid > 0) {
+            //no uid on refresh
+            t.uid = token.uid;
+        }
         t.save();
     }
 }
