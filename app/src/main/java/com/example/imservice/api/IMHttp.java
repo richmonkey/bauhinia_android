@@ -15,6 +15,8 @@ import java.util.List;
 
 import retrofit.http.Body;
 import retrofit.http.GET;
+import retrofit.http.Header;
+import retrofit.http.Headers;
 import retrofit.http.Multipart;
 import retrofit.http.POST;
 import retrofit.http.PUT;
@@ -36,9 +38,8 @@ public interface IMHttp {
     @POST("/auth/refresh_token")
     Observable<Token> postAuthRefreshToken(@Body PostAuthRefreshToken refreshToken);
 
-    @Multipart
     @POST("/images")
-    Observable<Image> postImages(@Part("file") TypedFile file);
+    Observable<Image> postImages(@Header("Content-Type") String contentType, @Body TypedFile file);
 
     @Multipart
     @POST("/audios")

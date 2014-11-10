@@ -25,7 +25,7 @@ public class BaseActivity extends Activity implements RequestCodes {
         super.onResume();
 
         if (!TextUtils.isEmpty(Token.getInstance().refreshToken)) {
-            //refreshToken();
+            refreshToken();
         }
     }
 

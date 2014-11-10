@@ -4,8 +4,6 @@ import android.app.ActionBar;
 
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.*;
 import android.util.Log;
@@ -25,8 +23,11 @@ import com.example.imservice.model.ContactDB;
 import com.example.imservice.model.PhoneNumber;
 import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
+import com.example.imservice.tools.ImageMIME;
 import com.google.gson.JsonObject;
 import com.squareup.picasso.Picasso;
+
+import org.apache.commons.io.IOUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -158,7 +159,8 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                 case IMAGE:
                     ImageView imageView = ButterKnife.findById(convertView, R.id.image);
                     Picasso.with(getBaseContext())
-                            .load(((IMessage.Image)msg.content).image)
+                            .load(((IMessage.Image) msg.content).image + "@256w_256h_0c")
+                            //.load(((IMessage.Image) msg.content).image + "@512w_512h_0c")
                             .into(imageView);
                     break;
                 default:
@@ -414,38 +416,17 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         try {
             InputStream is = getContentResolver().openInputStream(selectedImageUri);
 
-            final int maxSize = 1024;
-            BitmapFactory.Options o = new BitmapFactory.Options();
-            o.inJustDecodeBounds = true;
-            BitmapFactory.decodeStream(is,null, o);
-
-            o.inJustDecodeBounds = false;
-            if (o.outWidth > maxSize || o.outHeight > maxSize) {
-                int width_tmp=o.outWidth, height_tmp=o.outHeight;
-                int scale=1;
-                while(true)
-                {
-                    if(width_tmp/2<maxSize && height_tmp/2<maxSize)
-                        break;
-                    width_tmp/=2;
-                    height_tmp/=2;
-                    scale*=2;
-                }
-                o.inSampleSize = scale;
-            }
-
-            Bitmap bitmap = BitmapFactory.decodeStream(getContentResolver().openInputStream(selectedImageUri), null, o);
-            is.close();
-
-            File file = File.createTempFile("temp_foto", ".jpg", null);
+            File file = File.createTempFile("temp_foto", ".image", null);
             FileOutputStream fos = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, fos);
-            bitmap.recycle();
-            fos.flush();
+
+            IOUtils.copy(is, fos);
+
+            is.close();
             fos.close();
 
-            TypedFile typedFile = new TypedFile("image/jpeg", file);
-            imHttp.postImages(typedFile)
+            String type = ImageMIME.getMimeType(file);
+            TypedFile typedFile = new TypedFile(type, file);
+            imHttp.postImages(type, typedFile)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(new Action1<Image>() {
                         @Override
