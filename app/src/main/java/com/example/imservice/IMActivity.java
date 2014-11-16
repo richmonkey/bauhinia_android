@@ -15,6 +15,7 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
 import com.example.imservice.activity.BaseActivity;
+import com.example.imservice.api.types.Audio;
 import com.example.imservice.api.types.Image;
 import com.example.imservice.constant.MessageKeys;
 import com.example.imservice.formatter.MessageFormatter;
@@ -36,6 +37,11 @@ import java.util.ArrayList;
 import java.util.Date;
 
 import butterknife.ButterKnife;
+import butterknife.InjectView;
+import butterknife.OnClick;
+import bz.tsung.media.audio.AudioRecorder;
+import bz.tsung.media.audio.AudioUtil;
+import bz.tsung.media.audio.converters.AmrWaveConverter;
 import retrofit.mime.TypedFile;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
@@ -43,7 +49,7 @@ import rx.functions.Action1;
 import static android.os.SystemClock.uptimeMillis;
 
 
-public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys {
+public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener {
     private final String TAG = "imservice";
 
     private long currentUID;
@@ -65,6 +71,35 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
     BaseAdapter adapter;
 
+    @Override
+    public void onRecordFail() {
+
+    }
+
+    @Override
+    public void onRecordComplete(String file, final long duration) {
+        String type = "audio/amr";
+        TypedFile typedFile = new TypedFile(type, new File(file));
+        imHttp.postAudios(type, typedFile)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<Audio>() {
+                    @Override
+                    public void call(Audio audio) {
+                        onAudio(duration/1000, audio);
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        Toast.makeText(IMActivity.this, throwable.getMessage(), Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    @Override
+    public void onRecordConvertedBuffer(byte[] buffer) {
+
+    }
+
     static interface ContentTypes {
         public static int UNKNOWN = 0;
         public static int AUDIO = 2;
@@ -72,6 +107,10 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         public static int LOCATION = 6;
         public static int TEXT = 8;
     }
+
+    @InjectView(R.id.audio_recorder)
+    AudioRecorder audioRecorder;
+    AudioUtil audioUtil;
 
     class ChatAdapter extends BaseAdapter implements ContentTypes {
         @Override
@@ -177,6 +216,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.chat);
+        ButterKnife.inject(this);
 
         this.currentUID = Token.getInstance().uid;
         Intent intent = getIntent();
@@ -204,7 +244,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         adapter = new ChatAdapter();
         ListView lv = (ListView)findViewById(R.id.listview);
         lv.setAdapter(adapter);
-        editText = (EditText)findViewById(R.id.et_sendmessage);
+        editText = (EditText)findViewById(R.id.text_message);
 
         actionBar=getActionBar();
         actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
@@ -216,6 +256,11 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         setSubtitle();
         IMService.getInstance().addObserver(this);
         IMService.getInstance().subscribeState(peer.uid);
+
+        audioUtil = new AudioUtil(this);
+        audioRecorder.setAudioUtil(audioUtil);
+        audioRecorder.setAudioRecorderListener(this);
+        audioRecorder.setWaveConverter(new AmrWaveConverter());
     }
 
     @Override
@@ -278,6 +323,18 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         Log.i(TAG, "imactivity destory");
         IMService.getInstance().removeObserver(this);
         IMService.getInstance().unsubscribeState(peerUID);
+        audioUtil.release();
+    }
+
+    @OnClick(R.id.button_switch)
+    void switchButtons() {
+        if (audioRecorder.getVisibility() == View.VISIBLE) {
+            audioRecorder.setVisibility(View.GONE);
+            editText.setVisibility(View.VISIBLE);
+        } else {
+            audioRecorder.setVisibility(View.VISIBLE);
+            editText.setVisibility(View.GONE);
+        }
     }
 
     public static int now() {
@@ -426,7 +483,8 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
             String type = ImageMIME.getMimeType(file);
             TypedFile typedFile = new TypedFile(type, file);
-            imHttp.postImages(type, typedFile)
+            imHttp.postImages(type// + "; charset=binary"
+                    , typedFile)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(new Action1<Image>() {
                         @Override
@@ -450,6 +508,36 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         msg.receiver = peerUID;
         JsonObject content = new JsonObject();
         content.addProperty(IMAGE, image.srcUrl);
+        msg.content = content.toString();
+
+        IMessage imsg = new IMessage();
+        imsg.sender = msg.sender;
+        imsg.receiver = msg.receiver;
+        imsg.setContent(msg.content);
+        imsg.timestamp = now();
+        PeerMessageDB.getInstance().insertMessage(imsg, msg.receiver);
+
+        msg.msgLocalID = imsg.msgLocalID;
+        Log.i(TAG, "msg local id:" + imsg.msgLocalID);
+        IMService im = IMService.getInstance();
+        im.sendPeerMessage(msg);
+
+        messages.add(imsg);
+
+        adapter.notifyDataSetChanged();
+        ListView lv = (ListView)findViewById(R.id.listview);
+        lv.smoothScrollToPosition(messages.size()-1);
+    }
+
+    void onAudio(long duration, Audio audio) {
+        IMMessage msg = new IMMessage();
+        msg.sender = this.currentUID;
+        msg.receiver = peerUID;
+        JsonObject content = new JsonObject();
+        JsonObject audioJson = new JsonObject();
+        audioJson.addProperty("duration", duration);
+        audioJson.addProperty("url", audio.srcUrl);
+        content.add(AUDIO, audioJson);
         msg.content = content.toString();
 
         IMessage imsg = new IMessage();

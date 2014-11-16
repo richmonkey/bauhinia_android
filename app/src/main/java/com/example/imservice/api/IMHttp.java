@@ -40,9 +40,8 @@ public interface IMHttp {
     @POST("/images")
     Observable<Image> postImages(@Header("Content-Type") String contentType, @Body TypedFile file);
 
-    @Multipart
     @POST("/audios")
-    Observable<Audio> postAudios(@Part("file") TypedFile file);
+    Observable<Audio> postAudios(@Header("Content-Type") String contentType, @Body TypedFile file);
 
     @Multipart
     @PUT("/users/me/avatar")

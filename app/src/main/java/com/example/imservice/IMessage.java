@@ -61,6 +61,8 @@ public class IMessage implements MessageKeys {
                 content = gson.fromJson(raw, Text.class);
             } else if (element.has(IMAGE)){
                 content = gson.fromJson(raw, Image.class);
+            } else if (element.has(AUDIO)){
+                content = gson.fromJson(raw, Audio.class);
             } else {
                 content = new Unknown();
             }
