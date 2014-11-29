@@ -24,14 +24,18 @@ import com.example.imservice.model.ContactDB;
 import com.example.imservice.model.PhoneNumber;
 import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
+import com.example.imservice.tools.AudioCache;
 import com.example.imservice.tools.ImageMIME;
 import com.google.gson.JsonObject;
+import com.squareup.picasso.Downloader;
+import com.squareup.picasso.OkHttpDownloader;
 import com.squareup.picasso.Picasso;
 
 import org.apache.commons.io.IOUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,6 +43,7 @@ import java.util.Date;
 import butterknife.ButterKnife;
 import butterknife.InjectView;
 import butterknife.OnClick;
+import butterknife.OnItemClick;
 import bz.tsung.media.audio.AudioRecorder;
 import bz.tsung.media.audio.AudioUtil;
 import bz.tsung.media.audio.converters.AmrWaveConverter;
@@ -108,6 +113,8 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         public static int TEXT = 8;
     }
 
+    @InjectView(android.R.id.list)
+    ListView listview;
     @InjectView(R.id.audio_recorder)
     AudioRecorder audioRecorder;
     AudioUtil audioUtil;
@@ -202,6 +209,22 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                             //.load(((IMessage.Image) msg.content).image + "@512w_512h_0c")
                             .into(imageView);
                     break;
+                case AUDIO:
+                    /*
+                    final IMessage.Audio audio = (IMessage.Audio) msg.content;
+                    OkHttpDownloader downloader = new OkHttpDownloader(IMActivity.this);
+                    try {
+                        Downloader.Response response = downloader.load(Uri.parse(audio.url), false);
+                        InputStream inputStream = response.getInputStream();
+                        FileOutputStream fileOutputStream = new FileOutputStream(AudioCache.getPath() + msg.msgLocalID);
+                        IOUtils.copy(inputStream, fileOutputStream);
+                        inputStream.close();
+                        fileOutputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    break;
+                    */
                 default:
                     TextView content = (TextView)convertView.findViewById(R.id.text);
                     content.setText(MessageFormatter.messageContentToString(msg.content));
@@ -242,8 +265,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         }
 
         adapter = new ChatAdapter();
-        ListView lv = (ListView)findViewById(R.id.listview);
-        lv.setAdapter(adapter);
+        listview.setAdapter(adapter);
         editText = (EditText)findViewById(R.id.text_message);
 
         actionBar=getActionBar();
@@ -376,8 +398,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                 (InputMethodManager)editText.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         inputManager.hideSoftInputFromWindow(editText.getWindowToken(), 0);
         adapter.notifyDataSetChanged();
-        ListView lv = (ListView)findViewById(R.id.listview);
-        lv.smoothScrollToPosition(messages.size()-1);
+        listview.smoothScrollToPosition(messages.size()-1);
     }
 
     public void onConnectState(IMService.ConnectState state) {
@@ -428,8 +449,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         messages.add(imsg);
 
         adapter.notifyDataSetChanged();
-        ListView lv = (ListView)findViewById(R.id.listview);
-        lv.smoothScrollToPosition(messages.size()-1);
+        listview.smoothScrollToPosition(messages.size()-1);
     }
     public void onPeerMessageACK(int msgLocalID, long uid) {
         Log.i(TAG, "message ack");
@@ -525,8 +545,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         messages.add(imsg);
 
         adapter.notifyDataSetChanged();
-        ListView lv = (ListView)findViewById(R.id.listview);
-        lv.smoothScrollToPosition(messages.size()-1);
+        listview.smoothScrollToPosition(messages.size()-1);
     }
 
     void onAudio(long duration, Audio audio) {
@@ -555,7 +574,21 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         messages.add(imsg);
 
         adapter.notifyDataSetChanged();
-        ListView lv = (ListView)findViewById(R.id.listview);
-        lv.smoothScrollToPosition(messages.size()-1);
+        listview.smoothScrollToPosition(messages.size()-1);
+    }
+
+    @OnItemClick(android.R.id.list)
+    void onItemClick(int position) {
+        IMessage message = messages.get(position);
+        if (message.content instanceof IMessage.Audio) {
+            IMessage.Audio audio = (IMessage.Audio) message.content;
+            OkHttpDownloader downloader = new OkHttpDownloader(this);
+            try {
+                Downloader.Response response = downloader.load(Uri.parse(audio.url), true);
+                response.getInputStream();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }
