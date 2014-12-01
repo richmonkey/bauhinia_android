@@ -4,6 +4,7 @@ import android.app.ActionBar;
 
 import android.content.Context;
 import android.content.Intent;
+import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.*;
 import android.util.Log;
@@ -27,11 +28,12 @@ import com.example.imservice.model.UserDB;
 import com.example.imservice.tools.AudioCache;
 import com.example.imservice.tools.ImageMIME;
 import com.google.gson.JsonObject;
-import com.squareup.picasso.Downloader;
-import com.squareup.picasso.OkHttpDownloader;
 import com.squareup.picasso.Picasso;
 
 import org.apache.commons.io.IOUtils;
+import org.joda.time.Period;
+import org.joda.time.format.PeriodFormatter;
+import org.joda.time.format.PeriodFormatterBuilder;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -54,7 +56,7 @@ import rx.functions.Action1;
 import static android.os.SystemClock.uptimeMillis;
 
 
-public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener {
+public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener, AdapterView.OnItemClickListener {
     private final String TAG = "imservice";
 
     private long currentUID;
@@ -103,6 +105,11 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     @Override
     public void onRecordConvertedBuffer(byte[] buffer) {
 
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
+        onItemClick(i);
     }
 
     static interface ContentTypes {
@@ -174,6 +181,25 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             return 10;
         }
 
+        private class ViewHolder {
+            ViewHolder(View view) {
+                ButterKnife.inject(this, view);
+            }
+        }
+
+        class AudioHolder extends ViewHolder {
+            @InjectView(R.id.play_control)
+            ImageView control;
+            @InjectView(R.id.progress)
+            ProgressBar progress;
+            @InjectView(R.id.duration)
+            TextView duration;
+
+            AudioHolder(View view) {
+                super(view);
+            }
+        }
+
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             IMessage msg = messages.get(position);
@@ -194,6 +220,9 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                     default:
                         contentLayout = R.layout.chat_content_text;
                         break;
+                    case AUDIO:
+                        contentLayout = R.layout.chat_content_audio;
+                        break;
                     case IMAGE:
                         contentLayout = R.layout.chat_content_image;
                         break;
@@ -210,30 +239,34 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                             .into(imageView);
                     break;
                 case AUDIO:
-                    /*
                     final IMessage.Audio audio = (IMessage.Audio) msg.content;
-                    OkHttpDownloader downloader = new OkHttpDownloader(IMActivity.this);
-                    try {
-                        Downloader.Response response = downloader.load(Uri.parse(audio.url), false);
-                        InputStream inputStream = response.getInputStream();
-                        FileOutputStream fileOutputStream = new FileOutputStream(AudioCache.getPath() + msg.msgLocalID);
-                        IOUtils.copy(inputStream, fileOutputStream);
-                        inputStream.close();
-                        fileOutputStream.close();
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                    AudioHolder audioHolder =  new AudioHolder(convertView);
+                    audioHolder.progress.setMax((int) audio.duration);
+                    if (audioUtil.isPlaying() && playingMessage != null && msg.msgLocalID == playingMessage.msgLocalID) {
+                        audioHolder.control.setImageResource(R.drawable.chatto_voice_playing_f2);
+                        //audioHolder.progress.setProgress(audioUtil.get);
+                    } else {
+                        audioHolder.control.setImageResource(R.drawable.chatto_voice_playing);
+                        audioHolder.progress.setProgress(0);
                     }
+                    Period period = new Period().withSeconds((int) audio.duration);
+                    PeriodFormatter periodFormatter = new PeriodFormatterBuilder()
+                            .appendMinutes()
+                            .appendSeparator(":")
+                            .appendSeconds()
+                            .appendSuffix("\"")
+                            .toFormatter();
+                    audioHolder.duration.setText(periodFormatter.print(period));
                     break;
-                    */
                 default:
                     TextView content = (TextView)convertView.findViewById(R.id.text);
+                    content.setFocusable(false);
                     content.setText(MessageFormatter.messageContentToString(msg.content));
                     break;
             }
             return convertView;
         }
     }
-
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -266,6 +299,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
         adapter = new ChatAdapter();
         listview.setAdapter(adapter);
+        //listview.setOnItemClickListener(this);
         editText = (EditText)findViewById(R.id.text_message);
 
         actionBar=getActionBar();
@@ -280,6 +314,18 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         IMService.getInstance().subscribeState(peer.uid);
 
         audioUtil = new AudioUtil(this);
+        audioUtil.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+            @Override
+            public void onCompletion(MediaPlayer mediaPlayer) {
+                adapter.notifyDataSetChanged();
+            }
+        });
+        audioUtil.setOnStopListener(new AudioUtil.OnStopListener() {
+            @Override
+            public void onStop(int reason) {
+                adapter.notifyDataSetChanged();
+            }
+        });
         audioRecorder.setAudioUtil(audioUtil);
         audioRecorder.setAudioRecorderListener(this);
         audioRecorder.setWaveConverter(new AmrWaveConverter());
@@ -440,7 +486,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             return;
         }
         Log.i(TAG, "recv msg:" + msg.content);
-        IMessage imsg = new IMessage();
+        final IMessage imsg = new IMessage();
         imsg.timestamp = now();
         imsg.msgLocalID = msg.msgLocalID;
         imsg.sender = msg.sender;
@@ -450,6 +496,19 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
         adapter.notifyDataSetChanged();
         listview.smoothScrollToPosition(messages.size()-1);
+
+        if (imsg.content instanceof IMessage.Audio) {
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        AudioCache.download(imsg);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }).start();
+        }
     }
     public void onPeerMessageACK(int msgLocalID, long uid) {
         Log.i(TAG, "message ack");
@@ -577,17 +636,44 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         listview.smoothScrollToPosition(messages.size()-1);
     }
 
-    @OnItemClick(android.R.id.list)
-    void onItemClick(int position) {
-        IMessage message = messages.get(position);
-        if (message.content instanceof IMessage.Audio) {
-            IMessage.Audio audio = (IMessage.Audio) message.content;
-            OkHttpDownloader downloader = new OkHttpDownloader(this);
+    IMessage playingMessage;
+
+    void play(IMessage message) {
+        if (AudioCache.exists(message)) {
             try {
-                Downloader.Response response = downloader.load(Uri.parse(audio.url), true);
-                response.getInputStream();
+                audioUtil.startPlay(AudioCache.getFile(message));
+                playingMessage = message;
+                adapter.notifyDataSetChanged();
             } catch (IOException e) {
                 e.printStackTrace();
+            }
+        }
+    }
+
+    @OnItemClick(android.R.id.list)
+    void onItemClick(int position) {
+        final IMessage message = messages.get(position);
+        if (message.content instanceof IMessage.Audio) {
+            if (AudioCache.exists(message)) {
+                play(message);
+            } else {
+                showMessage("Download audio..");
+                new Thread(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            AudioCache.download(message);
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    play(message);
+                                }
+                            });
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }).start();
             }
         }
     }

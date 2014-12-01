@@ -3,6 +3,7 @@ package com.example.imservice.activity;
 import android.app.Activity;
 import android.os.Handler;
 import android.text.TextUtils;
+import android.widget.Toast;
 
 import com.example.imservice.Token;
 import com.example.imservice.api.IMHttp;
@@ -57,5 +58,9 @@ public class BaseActivity extends Activity implements RequestCodes {
             t.uid = token.uid;
         }
         t.save();
+    }
+
+    public void showMessage(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show();
     }
 }

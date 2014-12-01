@@ -11,6 +11,8 @@ public class MessageFormatter {
             return ((IMessage.Text) content).text;
         } else if (content instanceof IMessage.Image) {
             return "Sent a photo";
+        } else if (content instanceof IMessage.Audio) {
+            return "Sent a audio";
         } else {
             return content.getRaw();
         }
