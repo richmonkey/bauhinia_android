@@ -680,6 +680,9 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
                     }
                 }).start();
             }
+        } else if (message.content instanceof IMessage.Image) {
+            IMessage.Image image = (IMessage.Image) message.content;
+            startActivity(PhotoActivity.newIntent(this, image.image));
         }
     }
 }
