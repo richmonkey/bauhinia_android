@@ -1,5 +1,6 @@
 package com.example.imservice.api;
 
+import com.example.imservice.Config;
 import com.example.imservice.Token;
 import com.google.gson.Gson;
 
@@ -15,7 +16,7 @@ class IMHttpRetrofit {
 
     IMHttpRetrofit() {
         RestAdapter adapter = new RestAdapter.Builder()
-                .setEndpoint("http://106.186.122.158:5000")
+                .setEndpoint(Config.API_URL)
                 .setConverter(new GsonConverter(new Gson()))
                 .setRequestInterceptor(new RequestInterceptor() {
                     @Override

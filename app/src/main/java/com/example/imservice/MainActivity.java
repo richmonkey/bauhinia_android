@@ -115,8 +115,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         this.uid = Token.getInstance().uid;
         Log.i(TAG, "start im service");
         IMService im =  IMService.getInstance();
-        im.setHost("106.186.122.158");
-        im.setPort(23000);
+
         im.setUid(this.uid);
         im.setPeerMessageHandler(PeerMessageHandler.getInstance());
         im.addObserver(this);
@@ -171,40 +170,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     }
 
-    public void showNotification(IMessage msg, String name){
-        Uri soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
-        Intent intent = new Intent(MainActivity.this, MainActivity.class);
-        PendingIntent pIntent = PendingIntent.getActivity(MainActivity.this, 0, intent, 0);
 
-        Notification mNotification = new Notification.Builder(this)
-                .setContentTitle(name)
-                .setContentText(MessageFormatter.messageContentToString(msg.content))
-                .setSmallIcon(R.drawable.xiaohei)
-                .setContentIntent(pIntent)
-                .setSound(soundUri)
-                .build();
-
-        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-        mNotification.flags |= Notification.FLAG_AUTO_CANCEL;
-        notificationManager.notify(msg.msgLocalID, mNotification);
-    }
-
-    public static boolean isBackground(Context context) {
-        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
-        List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
-        for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
-            if (appProcess.processName.equals(context.getPackageName())) {
-                if (appProcess.importance == ActivityManager.RunningAppProcessInfo.IMPORTANCE_BACKGROUND) {
-                    Log.i("后台", appProcess.processName);
-                    return true;
-                }else{
-                    Log.i("前台", appProcess.processName);
-                    return false;
-                }
-            }
-        }
-        return false;
-    }
 
     public void onPeerMessage(IMMessage msg) {
         Log.i(TAG, "on peer message");
@@ -234,9 +200,6 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
         adapter.notifyDataSetChanged();
 
-        if (isBackground(this)) {
-            showNotification(imsg, conversation.name);
-        }
     }
 
     public static int now() {

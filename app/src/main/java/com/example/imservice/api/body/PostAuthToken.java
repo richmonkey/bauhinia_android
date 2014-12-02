@@ -5,4 +5,5 @@ package com.example.imservice.api.body;
  */
 public class PostAuthToken extends PostPhone{
     public String code;
+    public String ng_device_token;
 }

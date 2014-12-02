@@ -2,6 +2,7 @@ package com.example.imservice;
 
 import android.app.ActionBar;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.media.MediaPlayer;
@@ -15,10 +16,12 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
-import com.example.imservice.activity.BaseActivity;
+import com.example.imservice.api.IMHttp;
+import com.example.imservice.api.IMHttpFactory;
 import com.example.imservice.api.types.Audio;
 import com.example.imservice.api.types.Image;
 import com.example.imservice.constant.MessageKeys;
+import com.example.imservice.constant.RequestCodes;
 import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.ContactDB;
@@ -56,7 +59,7 @@ import rx.functions.Action1;
 import static android.os.SystemClock.uptimeMillis;
 
 
-public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener, AdapterView.OnItemClickListener {
+public class IMActivity extends Activity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener, AdapterView.OnItemClickListener {
     private final String TAG = "imservice";
 
     private long currentUID;
@@ -87,6 +90,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     public void onRecordComplete(String file, final long duration) {
         String type = "audio/amr";
         TypedFile typedFile = new TypedFile(type, new File(file));
+        IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.postAudios(type, typedFile)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<Audio>() {
@@ -527,12 +531,12 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             intent.setAction(Intent.ACTION_GET_CONTENT);
             startActivityForResult(Intent.createChooser(intent
                     , getResources().getString(R.string.product_fotos_get_from))
-                    , SELECT_PICTURE);
+                    , RequestCodes.SELECT_PICTURE);
         } else {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("image/*");
-            startActivityForResult(intent, SELECT_PICTURE_KITKAT);
+            startActivityForResult(intent, RequestCodes.SELECT_PICTURE_KITKAT);
         }
 
     }
@@ -542,7 +546,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             return;
         }
 
-        if (requestCode == SELECT_PICTURE || requestCode == SELECT_PICTURE_KITKAT) {
+        if (requestCode == RequestCodes.SELECT_PICTURE || requestCode == RequestCodes.SELECT_PICTURE_KITKAT) {
             Uri selectedImageUri = data.getData();
             onImageUri(selectedImageUri);
         }
@@ -562,6 +566,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
             String type = ImageMIME.getMimeType(file);
             TypedFile typedFile = new TypedFile(type, file);
+            IMHttp imHttp = IMHttpFactory.Singleton();
             imHttp.postImages(type// + "; charset=binary"
                     , typedFile)
                     .observeOn(AndroidSchedulers.mainThread())
@@ -657,7 +662,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             if (AudioCache.exists(message)) {
                 play(message);
             } else {
-                showMessage("Download audio..");
+                Toast.makeText(this, "Download audio..", Toast.LENGTH_LONG).show();
                 new Thread(new Runnable() {
                     @Override
                     public void run() {

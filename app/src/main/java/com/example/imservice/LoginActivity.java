@@ -1,5 +1,6 @@
 package com.example.imservice;
 
+import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.os.Bundle;
@@ -7,7 +8,8 @@ import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.Toast;
-import com.example.imservice.activity.BaseActivity;
+import com.example.imservice.api.IMHttp;
+import com.example.imservice.api.IMHttpFactory;
 import com.example.imservice.api.body.PostAuthToken;
 import com.example.imservice.api.types.Code;
 import com.example.imservice.api.types.User;
@@ -19,8 +21,8 @@ import rx.functions.Action1;
 /**
  * Created by houxh on 14-8-11.
  */
-public class LoginActivity extends BaseActivity {
-    private final String TAG = "imservice";
+public class LoginActivity extends Activity {
+    private final String TAG = "beetle";
 
     private EditText phoneText;
     private EditText codeText;
@@ -56,6 +58,10 @@ public class LoginActivity extends BaseActivity {
         postAuthToken.code = code;
         postAuthToken.zone = "86";
         postAuthToken.number = phone;
+        IMApplication app = (IMApplication)getApplication();
+        postAuthToken.ng_device_token = app.deviceToken;
+        Log.i(TAG, "auth device token:" + app.deviceToken);
+        IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.postAuthToken(postAuthToken)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<Token>() {
@@ -63,11 +69,16 @@ public class LoginActivity extends BaseActivity {
                     public void call(Token token) {
                         dialog.dismiss();
 
-                        onTokenRefreshed(token);
+                        Token t = Token.getInstance();
+                        t.accessToken = token.accessToken;
+                        t.refreshToken = token.refreshToken;
+                        t.expireTimestamp = token.expireTimestamp;
+                        t.uid = token.uid;
+
+                        t.save();
 
                         User u = new User();
                         u.uid = token.uid;
-                        //u.number = new PhoneNumber("86", phone);
                         u.number = phone;
                         u.zone = "86";
                         UserDB.getInstance().addUser(u);
@@ -96,6 +107,7 @@ public class LoginActivity extends BaseActivity {
         }
 
         final ProgressDialog dialog = ProgressDialog.show(this, null, "Request...");
+        IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.getVerifyCode("86", phone)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<Code>() {

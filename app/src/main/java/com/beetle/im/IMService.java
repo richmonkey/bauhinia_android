@@ -33,7 +33,7 @@ public class IMService {
     private final String TAG = "imservice";
     private final int HEARTBEAT = 10;
     private AsyncTCP tcp;
-    private boolean stopped;
+    private boolean stopped = true;
     private Timer connectTimer;
     private Timer heartbeatTimer;
     private int connectFailCount = 0;
@@ -106,6 +106,10 @@ public class IMService {
             throw new RuntimeException("NO UID PROVIDED");
         }
 
+        if (!this.stopped) {
+            Log.i(TAG, "already started");
+            return;
+        }
         this.stopped = false;
         connectTimer.setTimer(uptimeMillis());
         connectTimer.resume();
@@ -115,6 +119,10 @@ public class IMService {
     }
 
     public void stop() {
+        if (this.stopped) {
+            Log.i(TAG, "already stopped");
+            return;
+        }
         stopped = true;
         heartbeatTimer.suspend();
         connectTimer.suspend();
@@ -166,6 +174,7 @@ public class IMService {
 
     private void close() {
         if (this.tcp != null) {
+            Log.i(TAG, "close tcp");
             this.tcp.close();
             this.tcp = null;
         }
@@ -193,6 +202,7 @@ public class IMService {
             return;
         }
         this.connectState = ConnectState.STATE_CONNECTING;
+        IMService.this.publishConnectState();
         this.tcp = new AsyncTCP();
         Log.i(TAG, "new tcp...");
 
@@ -203,11 +213,13 @@ public class IMService {
                     Log.i(TAG, "connect err:" + status);
                     IMService.this.connectFailCount++;
                     IMService.this.connectState = ConnectState.STATE_CONNECTFAIL;
+                    IMService.this.publishConnectState();
                     IMService.this.close();
                 } else {
                     Log.i(TAG, "tcp connected");
                     IMService.this.connectFailCount = 0;
                     IMService.this.connectState = ConnectState.STATE_CONNECTED;
+                    IMService.this.publishConnectState();
                     IMService.this.sendAuth();
                     IMService.this.tcp.startRead();
                     subs.clear();
@@ -220,18 +232,36 @@ public class IMService {
             public void onRead(Object tcp, byte[] data) {
                 if (data.length == 0) {
                     IMService.this.connectState = ConnectState.STATE_UNCONNECTED;
+                    IMService.this.publishConnectState();
                     IMService.this.handleClose();
                 } else {
                     boolean b = IMService.this.handleData(data);
                     if (!b) {
                         IMService.this.connectState = ConnectState.STATE_UNCONNECTED;
+                        IMService.this.publishConnectState();
                         IMService.this.handleClose();
                     }
                 }
             }
         });
 
-        this.tcp.connect(this.host, this.port);
+        boolean r = this.tcp.connect(this.host, this.port);
+        Log.i(TAG, "tcp connect:" + r);
+        if (!r) {
+            this.tcp = null;
+            IMService.this.connectFailCount++;
+            IMService.this.connectState = ConnectState.STATE_CONNECTFAIL;
+            publishConnectState();
+            Log.d(TAG, "start connect timer");
+
+            long t;
+            if (this.connectFailCount > 60) {
+                t = uptimeMillis() + 60*1000;
+            } else {
+                t = uptimeMillis() + this.connectFailCount*1000;
+            }
+            connectTimer.setTimer(t);
+        }
     }
 
     private void handleAuthStatus(Message msg) {
@@ -283,10 +313,9 @@ public class IMService {
     private void handlePeerACK(Message msg) {
         MessagePeerACK ack = (MessagePeerACK)msg.body;
         this.peerMessageHandler.handleMessageRemoteACK(ack.msgLocalID, ack.sender);
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
-            ob.onPeerMessageRemoteACK(ack.msgLocalID, ack.sender);
-        }
+
+        publishPeerMessageRemoteACK(ack.msgLocalID, ack.sender);
+
     }
 
     private void handleOnlineState(Message msg) {

@@ -1,5 +1,6 @@
 package com.example.imservice;
 
+import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
@@ -10,7 +11,8 @@ import android.widget.BaseAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.example.imservice.activity.BaseActivity;
+import com.example.imservice.api.IMHttp;
+import com.example.imservice.api.IMHttpFactory;
 import com.example.imservice.api.body.PostPhone;
 import com.example.imservice.api.types.User;
 import com.example.imservice.model.*;
@@ -26,7 +28,7 @@ import rx.functions.Action1;
 /**
  * Created by houxh on 14-8-12.
  */
-public class NewConversation extends BaseActivity implements AdapterView.OnItemClickListener {
+public class NewConversation extends Activity implements AdapterView.OnItemClickListener {
     ArrayList<User> users;
 
     private ListView lv;
@@ -127,7 +129,7 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
                 }
             }
         }
-
+        IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.postUsers(phoneList)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<ArrayList<User>>() {
