@@ -100,11 +100,13 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         return true;
     }
 
+    /*
     @Override
     public void onBackPressed() {
         //禁用返回键
         moveTaskToBack(true);
     }
+    */
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

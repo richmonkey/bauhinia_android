@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
+import com.example.imservice.activity.PhotoActivity;
 import com.example.imservice.api.IMHttp;
 import com.example.imservice.api.IMHttpFactory;
 import com.example.imservice.api.types.Audio;

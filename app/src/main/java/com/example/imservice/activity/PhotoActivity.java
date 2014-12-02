@@ -1,4 +1,4 @@
-package com.example.imservice;
+package com.example.imservice.activity;
 
 import android.app.Activity;
 import android.content.Context;
@@ -8,6 +8,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ImageView;
 
+import com.example.imservice.R;
 import com.squareup.picasso.Picasso;
 
 import butterknife.ButterKnife;
