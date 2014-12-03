@@ -13,6 +13,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.beetle.im.IMService;
 import com.example.imservice.IMApplication;
 import com.example.imservice.MainActivity;
 import com.example.imservice.R;
@@ -94,6 +95,10 @@ public class VerifyActivity extends AccountActivity implements TextView.OnEditor
                         u.number = phone;
                         u.zone = "86";
                         UserDB.getInstance().addUser(u);
+
+                        IMService im = IMService.getInstance();
+                        im.setUid(token.uid);
+                        im.start();
 
                         Intent intent = new Intent(VerifyActivity.this, MainActivity.class);
                         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);

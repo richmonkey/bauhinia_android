@@ -120,11 +120,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         this.uid = Token.getInstance().uid;
         Log.i(TAG, "start im service");
         IMService im =  IMService.getInstance();
-
-        im.setUid(this.uid);
-        im.setPeerMessageHandler(PeerMessageHandler.getInstance());
         im.addObserver(this);
-        im.start();
 
         refreshConversations();
         initWidget();
@@ -145,6 +141,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         ContactDB.getInstance().removeObserver(this);
         IMService im =  IMService.getInstance();
         im.removeObserver(this);
+        this.refreshTimer.suspend();
         Log.i(TAG, "main activity destroyed");
     }
 

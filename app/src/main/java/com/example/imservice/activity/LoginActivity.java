@@ -11,6 +11,7 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.beetle.im.IMService;
 import com.example.imservice.MainActivity;
 import com.example.imservice.R;
 import com.example.imservice.Token;

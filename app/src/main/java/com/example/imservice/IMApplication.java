@@ -66,9 +66,9 @@ public class IMApplication extends Application implements Application.ActivityLi
     public void onCreate() {
         super.onCreate();
 
-        IMService im =  IMService.getInstance();
-        im.setHost(Config.HOST);
-        im.setPort(Config.PORT);
+        LevelDB ldb = LevelDB.getDefaultDB();
+        String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
+        ldb.open(dir);
 
         PeerMessageDB db = PeerMessageDB.getInstance();
         db.setDir(this.getDir("peer", MODE_PRIVATE));
@@ -76,10 +76,6 @@ public class IMApplication extends Application implements Application.ActivityLi
         ContactDB cdb = ContactDB.getInstance();
         cdb.setContentResolver(getApplicationContext().getContentResolver());
         cdb.monitorConctat(getApplicationContext());
-
-        LevelDB ldb = LevelDB.getDefaultDB();
-        String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
-        ldb.open(dir);
 
         SmartPush.registerReceiver(new IMsgReceiver() {
             @Override
@@ -104,6 +100,17 @@ public class IMApplication extends Application implements Application.ActivityLi
         SmartPush.registerService(this);
 
         registerActivityLifecycleCallbacks(this);
+
+        IMService im =  IMService.getInstance();
+        im.setHost(Config.HOST);
+        im.setPort(Config.PORT);
+        im.setPeerMessageHandler(PeerMessageHandler.getInstance());
+
+        //already login
+        if (Token.getInstance().uid > 0) {
+            im.setUid(Token.getInstance().uid);
+            im.start();
+        }
     }
 
 
