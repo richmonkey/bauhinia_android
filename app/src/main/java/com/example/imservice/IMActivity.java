@@ -304,7 +304,6 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
 
         adapter = new ChatAdapter();
         listview.setAdapter(adapter);
-        //listview.setOnItemClickListener(this);
         editText = (EditText)findViewById(R.id.text_message);
 
         actionBar=getActionBar();
@@ -453,12 +452,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     }
 
     public void onConnectState(IMService.ConnectState state) {
-        if (state == IMService.ConnectState.STATE_CONNECTING) {
-            titleView.setText("连线中");
-        } else if (state == IMService.ConnectState.STATE_CONNECTFAIL ||
-                state == IMService.ConnectState.STATE_UNCONNECTED) {
-            titleView.setText("未连接");
-        }
+        setSubtitle();
     }
 
     public void onPeerInputting(long uid) {
