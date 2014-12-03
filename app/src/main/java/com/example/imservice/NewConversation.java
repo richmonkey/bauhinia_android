@@ -101,53 +101,6 @@ public class NewConversation extends Activity implements AdapterView.OnItemClick
         lv = (ListView)findViewById(R.id.list);
         lv.setAdapter(adapter);
         lv.setOnItemClickListener(this);
-
-        getUsers();
-    }
-
-    void getUsers() {
-        final ArrayList<Contact> contacts = ContactDB.getInstance().copyContacts();
-
-        List<PostPhone> phoneList = new ArrayList<PostPhone>();
-        HashSet<String> sets = new HashSet<String>();
-        for (Contact contact : contacts) {
-            if (contact.phoneNumbers != null && contact.phoneNumbers.size() > 0) {
-                for (Contact.ContactData contactData : contact.phoneNumbers) {
-                    PhoneNumber n = new PhoneNumber();
-                    if (!n.parsePhoneNumber(contactData.value)) {
-                        continue;
-                    }
-                    if (sets.contains(n.getZoneNumber())) {
-                        continue;
-                    }
-                    sets.add(n.getZoneNumber());
-
-                    PostPhone phone = new PostPhone();
-                    phone.number = n.getNumber();
-                    phone.zone = n.getZone();
-                    phoneList.add(phone);
-                }
-            }
-        }
-        IMHttp imHttp = IMHttpFactory.Singleton();
-        imHttp.postUsers(phoneList)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<ArrayList<User>>() {
-                    @Override
-                    public void call(ArrayList<User> users) {
-                        UserDB userDB = UserDB.getInstance();
-                        for (int i = 0; i < users.size(); i++) {
-                            userDB.addUser(users.get(i));
-                        }
-                        loadUsers();
-                        adapter.notifyDataSetChanged();
-                    }
-                }, new Action1<Throwable>() {
-                    @Override
-                    public void call(Throwable throwable) {
-                        Log.e(NewConversation.class.getName(), throwable.getMessage());
-                    }
-                });
     }
 
     @Override

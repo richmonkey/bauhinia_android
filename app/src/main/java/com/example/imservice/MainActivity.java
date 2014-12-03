@@ -15,6 +15,10 @@ import android.widget.*;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
+import com.beetle.im.Timer;
+import com.example.imservice.api.IMHttp;
+import com.example.imservice.api.IMHttpFactory;
+import com.example.imservice.api.body.PostPhone;
 import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.ContactDB;
@@ -24,20 +28,26 @@ import com.example.imservice.model.UserDB;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+
+import rx.android.schedulers.AndroidSchedulers;
+import rx.functions.Action1;
 
 /**
  * Created by houxh on 14-8-8.
  */
 
 
-public class MainActivity extends Activity implements IMServiceObserver, AdapterView.OnItemClickListener {
+public class MainActivity extends Activity implements IMServiceObserver, AdapterView.OnItemClickListener, ContactDB.ContactObserver {
     List<Conversation> conversations;
 
     ListView lv;
 
     private long uid;
     private static final String TAG = "imservice";
+
+    private Timer refreshTimer;
 
     private ActionBar actionBar;
     private BaseAdapter adapter;
@@ -100,20 +110,13 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         return true;
     }
 
-    /*
-    @Override
-    public void onBackPressed() {
-        //禁用返回键
-        moveTaskToBack(true);
-    }
-    */
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         ContactDB.getInstance().loadContacts();
+        ContactDB.getInstance().addObserver(this);
         this.uid = Token.getInstance().uid;
         Log.i(TAG, "start im service");
         IMService im =  IMService.getInstance();
@@ -125,6 +128,80 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
         refreshConversations();
         initWidget();
+
+        this.refreshTimer = new Timer() {
+            @Override
+            protected  void fire() {
+                MainActivity.this.refreshUsers();
+            }
+        };
+        this.refreshTimer.setTimer(1000*1, 1000*3600);
+        this.refreshTimer.resume();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        ContactDB.getInstance().removeObserver(this);
+        IMService im =  IMService.getInstance();
+        im.removeObserver(this);
+        Log.i(TAG, "main activity destroyed");
+    }
+
+    @Override
+    public void OnExternalChange() {
+        Log.i(TAG, "contactdb changed");
+
+        for (Conversation conv : conversations) {
+            conv.name = getUserName(conv.cid);
+        }
+        adapter.notifyDataSetChanged();
+
+        refreshUsers();
+    }
+
+    void refreshUsers() {
+        Log.i(TAG, "refresh user...");
+        final ArrayList<Contact> contacts = ContactDB.getInstance().copyContacts();
+
+        List<PostPhone> phoneList = new ArrayList<PostPhone>();
+        HashSet<String> sets = new HashSet<String>();
+        for (Contact contact : contacts) {
+            if (contact.phoneNumbers != null && contact.phoneNumbers.size() > 0) {
+                for (Contact.ContactData contactData : contact.phoneNumbers) {
+                    PhoneNumber n = new PhoneNumber();
+                    if (!n.parsePhoneNumber(contactData.value)) {
+                        continue;
+                    }
+                    if (sets.contains(n.getZoneNumber())) {
+                        continue;
+                    }
+                    sets.add(n.getZoneNumber());
+
+                    PostPhone phone = new PostPhone();
+                    phone.number = n.getNumber();
+                    phone.zone = n.getZone();
+                    phoneList.add(phone);
+                }
+            }
+        }
+        IMHttp imHttp = IMHttpFactory.Singleton();
+        imHttp.postUsers(phoneList)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<ArrayList<User>>() {
+                    @Override
+                    public void call(ArrayList<User> users) {
+                        UserDB userDB = UserDB.getInstance();
+                        for (int i = 0; i < users.size(); i++) {
+                            userDB.addUser(users.get(i));
+                        }
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        Log.e(TAG, throwable.getMessage());
+                    }
+                });
     }
 
     void refreshConversations() {
@@ -172,8 +249,6 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     }
 
-
-
     public void onPeerMessage(IMMessage msg) {
         Log.i(TAG, "on peer message");
         Conversation conversation = null;
@@ -212,8 +287,6 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     public void onPeerMessageACK(int msgLocalID, long uid) {
         Log.i(TAG, "message ack on main");
-        refreshConversations();
-        adapter.notifyDataSetChanged();
     }
     public void onPeerMessageRemoteACK(int msgLocalID, long uid) {
     }

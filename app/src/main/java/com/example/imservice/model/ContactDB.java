@@ -1,11 +1,14 @@
 package com.example.imservice.model;
 
 import android.content.ContentResolver;
+import android.content.Context;
+import android.database.ContentObserver;
 import android.database.Cursor;
 import android.os.Build;
+import android.os.Handler;
+import android.os.Message;
 import android.provider.ContactsContract;
 import android.util.Log;
-import com.example.imservice.model.PhoneNumber;
 
 import java.util.ArrayList;
 
@@ -53,6 +56,22 @@ public class ContactDB {
 
     public void removeObserver(ContactObserver ob) {
         observers.remove(ob);
+    }
+
+    private ContentObserver contentObserver;
+    private Handler handler;
+    public void monitorConctat(Context appContext) {
+        this.handler = new Handler() {
+
+        };
+        this.contentObserver = new ContentObserver(this.handler) {
+            @Override
+            public void onChange(boolean selfChange) {
+                Log.i(TAG, "contact changed");
+                ContactDB.this.refreshContacts();
+            }
+        };
+        appContext.getContentResolver().registerContentObserver ( ContactsContract.Contacts.CONTENT_VCARD_URI, false, contentObserver);
     }
 
     public void loadContacts() {

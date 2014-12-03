@@ -75,6 +75,7 @@ public class IMApplication extends Application implements Application.ActivityLi
 
         ContactDB cdb = ContactDB.getInstance();
         cdb.setContentResolver(getApplicationContext().getContentResolver());
+        cdb.monitorConctat(getApplicationContext());
 
         LevelDB ldb = LevelDB.getDefaultDB();
         String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
