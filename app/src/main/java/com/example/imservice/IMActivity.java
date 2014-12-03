@@ -30,7 +30,8 @@ import com.example.imservice.model.ContactDB;
 import com.example.imservice.model.PhoneNumber;
 import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
-import com.example.imservice.tools.AudioCache;
+import com.example.imservice.tools.AudioDownloader;
+import com.example.imservice.tools.FileCache;
 import com.example.imservice.tools.ImageMIME;
 import com.google.gson.JsonObject;
 import com.squareup.picasso.Picasso;
@@ -64,7 +65,8 @@ import static android.os.SystemClock.uptimeMillis;
 import static com.example.imservice.constant.RequestCodes.*;
 
 
-public class IMActivity extends Activity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener, AdapterView.OnItemClickListener {
+public class IMActivity extends Activity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener,
+        AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver {
     private final String TAG = "imservice";
 
     private long currentUID;
@@ -337,6 +339,8 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         audioRecorder.setAudioUtil(audioUtil);
         audioRecorder.setAudioRecorderListener(this);
         audioRecorder.setWaveConverter(new AmrWaveConverter());
+
+        AudioDownloader.getInstance().addObserver(this);
     }
 
     @Override
@@ -465,6 +469,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         Log.i(TAG, "imactivity destory");
         IMService.getInstance().removeObserver(this);
         IMService.getInstance().unsubscribeState(peerUID);
+        AudioDownloader.getInstance().removeObserver(this);
         audioUtil.release();
     }
 
@@ -565,18 +570,12 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
 
         adapter.notifyDataSetChanged();
         listview.smoothScrollToPosition(messages.size()-1);
-
         if (imsg.content instanceof IMessage.Audio) {
-            new Thread(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        AudioCache.download(imsg);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-            }).start();
+            try {
+                AudioDownloader.getInstance().downloadAudio(imsg);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
     public void onPeerMessageACK(int msgLocalID, long uid) {
@@ -760,9 +759,10 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     IMessage playingMessage;
 
     void play(IMessage message) {
-        if (AudioCache.exists(message)) {
+        IMessage.Audio audio = (IMessage.Audio) message.content;
+        if (FileCache.getInstance().isCached(audio.url)) {
             try {
-                audioUtil.startPlay(AudioCache.getFile(message));
+                audioUtil.startPlay(FileCache.getInstance().getCachedFilePath(audio.url));
                 playingMessage = message;
                 adapter.notifyDataSetChanged();
             } catch (IOException e) {
@@ -775,30 +775,28 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     void onItemClick(int position) {
         final IMessage message = messages.get(position);
         if (message.content instanceof IMessage.Audio) {
-            if (AudioCache.exists(message)) {
+            IMessage.Audio audio = (IMessage.Audio) message.content;
+            if (FileCache.getInstance().isCached(audio.url)) {
                 play(message);
             } else {
-                Toast.makeText(this, "Download audio..", Toast.LENGTH_LONG).show();
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        try {
-                            AudioCache.download(message);
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    play(message);
-                                }
-                            });
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }).start();
+                try {
+                    AudioDownloader.getInstance().downloadAudio(message);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         } else if (message.content instanceof IMessage.Image) {
             IMessage.Image image = (IMessage.Image) message.content;
             startActivity(PhotoActivity.newIntent(this, image.image));
         }
+    }
+
+    @Override
+    public void onAudioDownloadSuccess(IMessage msg) {
+        Log.i(TAG, "audio download success");
+    }
+    @Override
+    public void onAudioDownloadFail(IMessage msg) {
+        Log.i(TAG, "audio download fail");
     }
 }

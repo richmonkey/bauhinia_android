@@ -17,6 +17,8 @@ import com.example.imservice.api.IMHttp;
 import com.example.imservice.api.IMHttpFactory;
 import com.example.imservice.api.body.PostAuthRefreshToken;
 import com.example.imservice.model.ContactDB;
+import com.example.imservice.tools.BinAscii;
+import com.example.imservice.tools.FileCache;
 import com.gameservice.sdk.push.api.IMsgReceiver;
 import com.gameservice.sdk.push.api.SmartPush;
 import com.gameservice.sdk.push.api.SmartPushOpenUtils;
@@ -33,33 +35,7 @@ import rx.functions.Action1;
  */
 public class IMApplication extends Application implements Application.ActivityLifecycleCallbacks {
 
-    private static final char HEX_DIGITS[] = {
-            '0',
-            '1',
-            '2',
-            '3',
-            '4',
-            '5',
-            '6',
-            '7',
-            '8',
-            '9',
-            'A',
-            'B',
-            'C',
-            'D',
-            'E',
-            'F'
-    };
 
-    public final static String bin2Hex(byte[] b) {
-        StringBuilder sb = new StringBuilder(b.length * 2);
-        for (int i = 0; i < b.length; i++) {
-            sb.append(HEX_DIGITS[(b[i] & 0xf0) >>> 4]);
-            sb.append(HEX_DIGITS[b[i] & 0x0f]);
-        }
-        return sb.toString();
-    }
 
     public String deviceToken;
     @Override
@@ -70,6 +46,8 @@ public class IMApplication extends Application implements Application.ActivityLi
         String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
         ldb.open(dir);
 
+        FileCache fc = FileCache.getInstance();
+        fc.setDir(this.getDir("cache", MODE_PRIVATE));
         PeerMessageDB db = PeerMessageDB.getInstance();
         db.setDir(this.getDir("peer", MODE_PRIVATE));
 
@@ -90,7 +68,7 @@ public class IMApplication extends Application implements Application.ActivityLi
                     return;
                 }
                 String deviceTokenStr = null;
-                deviceTokenStr = bin2Hex(tokenArray);
+                deviceTokenStr = BinAscii.bin2Hex(tokenArray);
                 Log.i(TAG, "device token:" + deviceTokenStr);
                 IMApplication.this.deviceToken = deviceTokenStr;
             }
