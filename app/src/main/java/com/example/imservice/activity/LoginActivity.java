@@ -39,6 +39,7 @@ public class LoginActivity extends AccountActivity implements TextView.OnEditorA
         ButterKnife.inject(this);
 
         Token t = Token.getInstance();
+        Log.i(TAG, "access token:" + t.accessToken);
         if (t.accessToken != null) {
             Log.i(TAG, "current uid:" + t.uid);
             Intent intent = new Intent(LoginActivity.this, MainActivity.class);

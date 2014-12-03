@@ -5,6 +5,8 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.*;
@@ -18,12 +20,11 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
 import com.example.imservice.activity.PhotoActivity;
-import com.example.imservice.api.IMHttp;
-import com.example.imservice.api.IMHttpFactory;
+
 import com.example.imservice.api.types.Audio;
-import com.example.imservice.api.types.Image;
+
 import com.example.imservice.constant.MessageKeys;
-import com.example.imservice.constant.RequestCodes;
+
 import com.example.imservice.formatter.MessageFormatter;
 import com.example.imservice.model.Contact;
 import com.example.imservice.model.ContactDB;
@@ -32,23 +33,25 @@ import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
 import com.example.imservice.tools.AudioDownloader;
 import com.example.imservice.tools.FileCache;
-import com.example.imservice.tools.ImageMIME;
+import com.example.imservice.tools.Outbox;
 import com.google.gson.JsonObject;
 import com.squareup.picasso.Picasso;
 
-import org.apache.commons.io.IOUtils;
+import java.io.ByteArrayOutputStream;
 import org.joda.time.Period;
 import org.joda.time.format.PeriodFormatter;
 import org.joda.time.format.PeriodFormatterBuilder;
 
 import java.io.File;
-import java.io.FileOutputStream;
+import java.io.FileInputStream;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.UUID;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
@@ -57,16 +60,14 @@ import butterknife.OnItemClick;
 import bz.tsung.media.audio.AudioRecorder;
 import bz.tsung.media.audio.AudioUtil;
 import bz.tsung.media.audio.converters.AmrWaveConverter;
-import retrofit.mime.TypedFile;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
+
 
 import static android.os.SystemClock.uptimeMillis;
 import static com.example.imservice.constant.RequestCodes.*;
 
 
 public class IMActivity extends Activity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener,
-        AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver {
+        AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver, Outbox.OutboxObserver {
     private final String TAG = "imservice";
 
     private long currentUID;
@@ -94,23 +95,41 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     }
 
     @Override
-    public void onRecordComplete(String file, final long duration) {
-        String type = "audio/amr";
-        TypedFile typedFile = new TypedFile(type, new File(file));
-        IMHttp imHttp = IMHttpFactory.Singleton();
-        imHttp.postAudios(type, typedFile)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<Audio>() {
-                    @Override
-                    public void call(Audio audio) {
-                        onAudio(duration/1000, audio);
-                    }
-                }, new Action1<Throwable>() {
-                    @Override
-                    public void call(Throwable throwable) {
-                        Toast.makeText(IMActivity.this, throwable.getMessage(), Toast.LENGTH_SHORT).show();
-                    }
-                });
+    public void onRecordComplete(String file, final long mduration) {
+        Audio audio = new Audio();
+        audio.srcUrl = localAudioURL();
+
+        long duration = mduration/1000;
+
+        JsonObject content = new JsonObject();
+        JsonObject audioJson = new JsonObject();
+        audioJson.addProperty("duration", duration);
+        audioJson.addProperty("url", audio.srcUrl);
+        content.add(AUDIO, audioJson);
+
+        IMessage imsg = new IMessage();
+        imsg.sender = this.currentUID;
+        imsg.receiver = peerUID;
+        imsg.setContent(content.toString());
+        imsg.timestamp = now();
+        PeerMessageDB.getInstance().insertMessage(imsg, peerUID);
+
+        Log.i(TAG, "msg local id:" + imsg.msgLocalID);
+
+
+        messages.add(imsg);
+
+        adapter.notifyDataSetChanged();
+        listview.smoothScrollToPosition(messages.size()-1);
+
+        Outbox ob = Outbox.getInstance();
+        try {
+            FileInputStream is = new FileInputStream(new File(file));
+            FileCache.getInstance().storeFile(audio.srcUrl, is);
+            ob.uploadAudio(imsg, FileCache.getInstance().getCachedFilePath(audio.srcUrl));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -122,6 +141,17 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
         onItemClick(i);
     }
+
+    private String localImageURL() {
+        UUID uuid = UUID.randomUUID();
+        return "http://localhost/images/"+ uuid.toString() + ".png";
+    }
+
+    private String localAudioURL() {
+        UUID uuid = UUID.randomUUID();
+        return "http://localhost/audios/" + uuid.toString() + ".amr";
+    }
+
 
     static interface ContentTypes {
         public static int UNKNOWN = 0;
@@ -241,12 +271,26 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
                 group.addView(getLayoutInflater().inflate(contentLayout, group, false));
             }
 
+            if (isOutMsg(position)) {
+                if ((msg.flags & MessageFlag.MESSAGE_FLAG_PEER_ACK) != 0) {
+                    //对方已收到 2个勾
+                    Log.i(TAG, "flag remote ack");
+                } else if ((msg.flags & MessageFlag.MESSAGE_FLAG_ACK) != 0) {
+                    //服务器已收到 1个勾
+                    Log.i(TAG, "flag server ack");
+                } else if ((msg.flags & MessageFlag.MESSAGE_FLAG_FAILURE) != 0) {
+                    //发送失败
+                    Log.i(TAG, "flag failure");
+                } else {
+                    //发送中 2个灰色的勾
+                }
+            }
+
             switch (getMediaType(position)) {
                 case IMAGE:
                     ImageView imageView = ButterKnife.findById(convertView, R.id.image);
                     Picasso.with(getBaseContext())
                             .load(((IMessage.Image) msg.content).image + "@256w_256h_0c")
-                            //.load(((IMessage.Image) msg.content).image + "@512w_512h_0c")
                             .into(imageView);
                     break;
                 case AUDIO:
@@ -341,6 +385,8 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         audioRecorder.setWaveConverter(new AmrWaveConverter());
 
         AudioDownloader.getInstance().addObserver(this);
+
+        Outbox.getInstance().addObserver(this);
     }
 
     @Override
@@ -470,6 +516,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         IMService.getInstance().removeObserver(this);
         IMService.getInstance().unsubscribeState(peerUID);
         AudioDownloader.getInstance().removeObserver(this);
+        Outbox.getInstance().removeObserver(this);
         audioUtil.release();
     }
 
@@ -582,10 +629,10 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         Log.i(TAG, "message ack");
     }
     public void onPeerMessageRemoteACK(int msgLocalID, long uid) {
-
+        Log.i(TAG, "message remote ack");
     }
     public void onPeerMessageFailure(int msgLocalID, long uid) {
-
+        Log.i(TAG, "message failure");
     }
 
     void getPicture() {
@@ -604,156 +651,90 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         }
     }
 
-    private File createImageFile() throws IOException {
-        // Create an image file name
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        String imageFileName = "JPEG_" + timeStamp + "_";
-        File storageDir = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES);
-        File image = File.createTempFile(
-                imageFileName,  /* prefix */
-                ".jpg",         /* suffix */
-                storageDir      /* directory */
-        );
-
-        return image;
-    }
-
-    File lastTakenPicture;
-
     void takePicture() {
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-        // Ensure that there's a camera activity to handle the intent
-        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            // Create the File where the photo should go
-            File photoFile = null;
-            try {
-                photoFile = createImageFile();
-                lastTakenPicture = photoFile;
-            } catch (IOException ex) {
-                // Error occurred while creating the File
-            }
-            // Continue only if the File was successfully created
-            if (photoFile != null) {
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,
-                        Uri.fromFile(photoFile));
-                startActivityForResult(takePictureIntent, TAKE_PICTURE);
-            }
-        }
+        startActivityForResult(takePictureIntent, TAKE_PICTURE);
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode != RESULT_OK) {
-            switch (requestCode) {
-                case TAKE_PICTURE:
-                    if (lastTakenPicture != null) {
-                        lastTakenPicture.delete();
-                        lastTakenPicture = null;
-                    }
-                    break;
-            }
+            Log.i(TAG, "take or select picture fail:" + resultCode);
             return;
         }
 
-        switch (requestCode) {
-            case SELECT_PICTURE:
-            case SELECT_PICTURE_KITKAT:
+        Bitmap bmp;
+        if (requestCode == TAKE_PICTURE) {
+            bmp = (Bitmap) data.getExtras().get("data");
+        } else if (requestCode == SELECT_PICTURE || requestCode == SELECT_PICTURE_KITKAT)  {
+            try {
                 Uri selectedImageUri = data.getData();
-                onImageUri(selectedImageUri);
-                break;
-            case TAKE_PICTURE:
-                onImageUri(Uri.fromFile(lastTakenPicture));
-                break;
+                Log.i(TAG, "selected image uri:" + selectedImageUri);
+                InputStream is = getContentResolver().openInputStream(selectedImageUri);
+                BitmapFactory.Options options = new BitmapFactory.Options();
+                options.inPreferredConfig = Bitmap.Config.ARGB_8888;
+                bmp = BitmapFactory.decodeStream(is, null, options);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return;
+            }
+        } else {
+            Log.i(TAG, "invalide request code:" + requestCode);
+            return;
         }
-    }
 
-    void onImageUri(Uri selectedImageUri) {
+        double w = bmp.getWidth();
+        double h = bmp.getHeight();
+        double newHeight = 640.0;
+        double newWidth = newHeight*w/h;
+
+
+        Bitmap bigBMP = Bitmap.createScaledBitmap(bmp, (int)newWidth, (int)newHeight, true);
+
+        double sw = 256.0;
+        double sh = 256.0*h/w;
+
+        Bitmap thumbnail = Bitmap.createScaledBitmap(bmp, (int)sw, (int)sh, true);
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        bigBMP.compress(Bitmap.CompressFormat.JPEG, 100, os);
+        ByteArrayOutputStream os2 = new ByteArrayOutputStream();
+        thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, os2);
+
+        String originURL = localImageURL();
+        String thumbURL = localImageURL();
         try {
-            InputStream is = getContentResolver().openInputStream(selectedImageUri);
+            FileCache.getInstance().storeByteArray(originURL, os);
+            FileCache.getInstance().storeByteArray(thumbURL, os2);
 
-            File file = File.createTempFile("temp_foto", ".image", null);
-            FileOutputStream fos = new FileOutputStream(file);
+            String path = FileCache.getInstance().getCachedFilePath(originURL);
+            String thumbPath = FileCache.getInstance().getCachedFilePath(thumbURL);
 
-            IOUtils.copy(is, fos);
+            String tpath = path + "@256w_256h_0c";
+            File f = new File(thumbPath);
+            File t = new File(tpath);
+            f.renameTo(t);
 
-            is.close();
-            fos.close();
 
-            String type = ImageMIME.getMimeType(file);
-            TypedFile typedFile = new TypedFile(type, file);
-            IMHttp imHttp = IMHttpFactory.Singleton();
-            imHttp.postImages(type// + "; charset=binary"
-                    , typedFile)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new Action1<Image>() {
-                        @Override
-                        public void call(Image image) {
-                            onImage(image);
-                        }
-                    }, new Action1<Throwable>() {
-                        @Override
-                        public void call(Throwable throwable) {
+            JsonObject content = new JsonObject();
+            content.addProperty(IMAGE, "file:" + path);
 
-                        }
-                    });
-        } catch (Exception e) {
+            IMessage imsg = new IMessage();
+            imsg.sender = currentUID;
+            imsg.receiver = peerUID;
+            imsg.setContent(content.toString());
+            imsg.timestamp = now();
+            PeerMessageDB.getInstance().insertMessage(imsg, peerUID);
+
+            messages.add(imsg);
+
+            adapter.notifyDataSetChanged();
+            listview.smoothScrollToPosition(messages.size()-1);
+
+
+            Outbox.getInstance().uploadImage(imsg, path);
+
+        } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    void onImage(Image image) {
-        IMMessage msg = new IMMessage();
-        msg.sender = this.currentUID;
-        msg.receiver = peerUID;
-        JsonObject content = new JsonObject();
-        content.addProperty(IMAGE, image.srcUrl);
-        msg.content = content.toString();
-
-        IMessage imsg = new IMessage();
-        imsg.sender = msg.sender;
-        imsg.receiver = msg.receiver;
-        imsg.setContent(msg.content);
-        imsg.timestamp = now();
-        PeerMessageDB.getInstance().insertMessage(imsg, msg.receiver);
-
-        msg.msgLocalID = imsg.msgLocalID;
-        Log.i(TAG, "msg local id:" + imsg.msgLocalID);
-        IMService im = IMService.getInstance();
-        im.sendPeerMessage(msg);
-
-        messages.add(imsg);
-
-        adapter.notifyDataSetChanged();
-        listview.smoothScrollToPosition(messages.size()-1);
-    }
-
-    void onAudio(long duration, Audio audio) {
-        IMMessage msg = new IMMessage();
-        msg.sender = this.currentUID;
-        msg.receiver = peerUID;
-        JsonObject content = new JsonObject();
-        JsonObject audioJson = new JsonObject();
-        audioJson.addProperty("duration", duration);
-        audioJson.addProperty("url", audio.srcUrl);
-        content.add(AUDIO, audioJson);
-        msg.content = content.toString();
-
-        IMessage imsg = new IMessage();
-        imsg.sender = msg.sender;
-        imsg.receiver = msg.receiver;
-        imsg.setContent(msg.content);
-        imsg.timestamp = now();
-        PeerMessageDB.getInstance().insertMessage(imsg, msg.receiver);
-
-        msg.msgLocalID = imsg.msgLocalID;
-        Log.i(TAG, "msg local id:" + imsg.msgLocalID);
-        IMService im = IMService.getInstance();
-        im.sendPeerMessage(msg);
-
-        messages.add(imsg);
-
-        adapter.notifyDataSetChanged();
-        listview.smoothScrollToPosition(messages.size()-1);
     }
 
     IMessage playingMessage;
@@ -798,5 +779,56 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     @Override
     public void onAudioDownloadFail(IMessage msg) {
         Log.i(TAG, "audio download fail");
+    }
+
+    @Override
+    public void onAudioUploadSuccess(IMessage imsg, String url) {
+        Log.i(TAG, "audio upload success:" + url);
+        IMessage.Audio audio = (IMessage.Audio)imsg.content;
+        audio.url = url;
+
+        IMMessage msg = new IMMessage();
+        msg.sender = this.currentUID;
+        msg.receiver = peerUID;
+        msg.msgLocalID = imsg.msgLocalID;
+        JsonObject content = new JsonObject();
+        JsonObject audioJson = new JsonObject();
+        audioJson.addProperty("duration", audio.duration);
+        audioJson.addProperty("url", url);
+        content.add(AUDIO, audioJson);
+        msg.content = content.toString();
+
+        IMService im = IMService.getInstance();
+        im.sendPeerMessage(msg);
+    }
+
+    @Override
+    public void onAudioUploadFail(IMessage msg) {
+        Log.i(TAG, "audio upload fail");
+        PeerMessageDB.getInstance().markMessageFailure(msg.msgLocalID, msg.receiver);
+        Toast.makeText(IMActivity.this, "上传失败", Toast.LENGTH_SHORT).show();
+    }
+
+    @Override
+    public void onImageUploadSuccess(IMessage imsg, String url) {
+        Log.i(TAG, "image upload success:" + url);
+
+        IMMessage msg = new IMMessage();
+        msg.sender = this.currentUID;
+        msg.receiver = peerUID;
+        JsonObject content = new JsonObject();
+        content.addProperty(IMAGE, url);
+        msg.content = content.toString();
+        msg.msgLocalID = imsg.msgLocalID;
+
+        IMService im = IMService.getInstance();
+        im.sendPeerMessage(msg);
+    }
+
+    @Override
+    public void onImageUploadFail(IMessage msg) {
+        Log.i(TAG, "image upload fail");
+        PeerMessageDB.getInstance().markMessageFailure(msg.msgLocalID, msg.receiver);
+        Toast.makeText(IMActivity.this, "上传失败", Toast.LENGTH_SHORT).show();
     }
 }

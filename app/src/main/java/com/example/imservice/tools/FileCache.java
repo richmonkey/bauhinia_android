@@ -2,6 +2,7 @@ package com.example.imservice.tools;
 
 import org.apache.commons.io.IOUtils;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -27,6 +28,14 @@ public class FileCache {
         File file = new File(this.dir, getFileName(key));
         FileOutputStream fileOutputStream = new FileOutputStream(file);
         IOUtils.copy(inputStream, fileOutputStream);
+        fileOutputStream.flush();
+        fileOutputStream.close();
+    }
+
+    public void storeByteArray(String key, ByteArrayOutputStream byteStream) throws IOException {
+        File file = new File(this.dir, getFileName(key));
+        FileOutputStream fileOutputStream = new FileOutputStream(file);
+        byteStream.writeTo(fileOutputStream);
         fileOutputStream.flush();
         fileOutputStream.close();
     }
