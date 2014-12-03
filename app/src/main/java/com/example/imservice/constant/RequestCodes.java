@@ -6,5 +6,6 @@ package com.example.imservice.constant;
 public interface RequestCodes {
     public static final int SELECT_PICTURE = 101;
     public static final int SELECT_PICTURE_KITKAT = 102;
+    public static final int TAKE_PICTURE = 103;
 }
 

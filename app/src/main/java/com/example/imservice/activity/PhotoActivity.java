@@ -38,6 +38,8 @@ public class PhotoActivity extends Activity {
         ButterKnife.inject(this);
         Picasso.with(this)
                 .load(getIntent().getStringExtra(EXTRA_URL))
+                .fit()
+                .centerInside()
                 .into(photo);
     }
 
