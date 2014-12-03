@@ -11,4 +11,5 @@ public class User {
     public String avatar;
     public String zone;
     public String state;
+    public long up_timestamp;
 }

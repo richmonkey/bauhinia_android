@@ -30,6 +30,13 @@ public class UserDB {
                 u.number = phoneNumber.getNumber();
                 u.zone = phoneNumber.getZone();
             }
+            u.avatar = db.get(key + "_avatar");
+            u.state = db.get(key + "_state");
+            try {
+                u.up_timestamp = db.getLong(key + "_up_timestamp");
+            } catch (Exception e) {
+
+            }
             return u;
         } catch (Exception e) {
             return null;
@@ -60,7 +67,17 @@ public class UserDB {
                 db.set(key + "_number", phoneNumber.getZoneNumber());
                 db.setLong("numbers_" + phoneNumber.getZoneNumber(), user.uid);
             }
-
+            if (user.avatar != null && user.avatar.length() > 0) {
+                db.set(key + "_avatar", user.avatar);
+            } else {
+                db.set(key + "_avatar", "");
+            }
+            if (user.state != null && user.state.length() > 0) {
+                db.set(key + "_state", user.state);
+            } else {
+                db.set(key + "_state", "");
+            }
+            db.setLong(key + "_up_timestamp", user.up_timestamp);
             return true;
         } catch (Exception e) {
             e.printStackTrace();

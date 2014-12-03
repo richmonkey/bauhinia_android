@@ -320,9 +320,13 @@ public class IMService {
 
     private void handleOnlineState(Message msg) {
         MessageOnlineState state = (MessageOnlineState)msg.body;
+        boolean on = state.online != 0 ? true : false;
+
+        if (subs.containsKey(new Long(state.sender))) {
+            subs.put(new Long(state.sender), new Boolean(on));
+        }
         for (int i = 0; i < observers.size(); i++ ) {
             IMServiceObserver ob = observers.get(i);
-            boolean on = state.online != 0 ? true : false;
             ob.onOnlineState(state.sender, on);
         }
     }

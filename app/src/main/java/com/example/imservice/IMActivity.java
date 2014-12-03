@@ -44,6 +44,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Date;
 
 import butterknife.ButterKnife;
@@ -368,6 +369,68 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         return u;
     }
 
+    private boolean IsSameDay(Calendar c1, Calendar c2) {
+        int year = c1.get(Calendar.YEAR);
+        int month = c1.get(Calendar.MONTH);
+        int day = c1.get(Calendar.DAY_OF_MONTH);
+
+        int year2 = c2.get(Calendar.YEAR);
+        int month2 = c2.get(Calendar.MONTH);
+        int day2 = c2.get(Calendar.DAY_OF_MONTH);
+
+        return (year == year2 && month == month2 && day == day2);
+    }
+
+    private boolean IsYestoday(Calendar c1, Calendar c2) {
+        c2.roll(Calendar.DAY_OF_MONTH, -1);
+        return IsSameDay(c1, c2);
+    }
+
+    private boolean IsBeforeYestoday(Calendar c1, Calendar c2) {
+        c2.roll(Calendar.DAY_OF_MONTH, -1);
+        return IsSameDay(c1, c2);
+    }
+
+    private boolean IsInWeek(Calendar c1, Calendar c2) {
+        c2.roll(Calendar.DAY_OF_MONTH, -7);
+        return c1.after(c2);
+    }
+
+    private boolean IsInMonth(Calendar c1, Calendar c2) {
+        c2.roll(Calendar.DAY_OF_MONTH, -30);
+        return c1.after(c2);
+    }
+
+    private String getLastOnlineTimestamp() {
+        Calendar lastDate = Calendar.getInstance();
+        lastDate.setTime(new Date(this.peer.up_timestamp*1000));
+        Calendar todayDate = Calendar.getInstance();
+
+        int year = lastDate.get(Calendar.YEAR);
+        int month = lastDate.get(Calendar.MONTH);
+        int day = lastDate.get(Calendar.DAY_OF_MONTH);
+        int weekDay = lastDate.get(Calendar.DAY_OF_WEEK);
+        int hour = lastDate.get(Calendar.HOUR_OF_DAY);
+        int minute = lastDate.get(Calendar.MINUTE);
+        Log.i(TAG, String.format("date:%d %d %d %d %d", year, month, day, weekDay, hour, minute));
+        String str;
+        if (IsSameDay(lastDate, todayDate)) {
+            str = String.format("最后上线时间: 今天%02d:%02d", hour, minute);
+        } else if (IsYestoday(lastDate, todayDate)) {
+            str = String.format("最后上线时间: 昨天%02d:%02d", hour, minute);
+        } else if (IsBeforeYestoday(lastDate, todayDate)) {
+            str = String.format("最后上线时间: 前天%02d:%02d", hour, minute);
+        } else if (IsInWeek(lastDate, todayDate)) {
+            String[] t = {"", "周日", "周一", "周二", "周三", "周四", "周五", "周六"};
+            str = String.format("最后上线于%s的%02d:%02d", t[weekDay], hour, minute);
+        } else if (IsInMonth(lastDate, todayDate)) {
+            str = String.format("最后上线 %02d-%02d-%02d %02d:%02d", year%100, month, day, hour, minute);
+        } else {
+            str = String.format("最后上线%04d年%02d月%02d日", year, month, day);
+        }
+        return str;
+    }
+
     private void setSubtitle() {
         IMService.ConnectState state = IMService.getInstance().getConnectState();
         if (state == IMService.ConnectState.STATE_CONNECTING) {
@@ -375,6 +438,9 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         } else if (state == IMService.ConnectState.STATE_CONNECTFAIL ||
                 state == IMService.ConnectState.STATE_UNCONNECTED) {
             setSubtitle("未连接");
+        } else if (this.peer.up_timestamp > 0) {
+            String s = getLastOnlineTimestamp();
+            setSubtitle(s);
         } else {
             setSubtitle("");
         }
@@ -475,7 +541,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
             if (on) {
                 setSubtitle("对方在线");
             } else {
-                setSubtitle("");
+                setSubtitle();
             }
         }
     }
