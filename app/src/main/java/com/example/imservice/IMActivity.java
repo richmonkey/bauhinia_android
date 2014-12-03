@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.*;
+import android.provider.MediaStore;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -43,6 +44,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 
@@ -58,6 +60,7 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 
 import static android.os.SystemClock.uptimeMillis;
+import static com.example.imservice.constant.RequestCodes.*;
 
 
 public class IMActivity extends Activity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener, AdapterView.OnItemClickListener {
@@ -349,6 +352,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
             getPicture();
             return true;
         } else if(id == R.id.action_take) {
+            takePicture();
             return true;
         }
         return super.onOptionsItemSelected(item);
@@ -532,24 +536,75 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
             intent.setAction(Intent.ACTION_GET_CONTENT);
             startActivityForResult(Intent.createChooser(intent
                     , getResources().getString(R.string.product_fotos_get_from))
-                    , RequestCodes.SELECT_PICTURE);
+                    , SELECT_PICTURE);
         } else {
             Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
             intent.addCategory(Intent.CATEGORY_OPENABLE);
             intent.setType("image/*");
-            startActivityForResult(intent, RequestCodes.SELECT_PICTURE_KITKAT);
+            startActivityForResult(intent, SELECT_PICTURE_KITKAT);
         }
+    }
 
+    private File createImageFile() throws IOException {
+        // Create an image file name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        File storageDir = Environment.getExternalStoragePublicDirectory(
+                Environment.DIRECTORY_PICTURES);
+        File image = File.createTempFile(
+                imageFileName,  /* prefix */
+                ".jpg",         /* suffix */
+                storageDir      /* directory */
+        );
+
+        return image;
+    }
+
+    File lastTakenPicture;
+
+    void takePicture() {
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // Ensure that there's a camera activity to handle the intent
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // Create the File where the photo should go
+            File photoFile = null;
+            try {
+                photoFile = createImageFile();
+                lastTakenPicture = photoFile;
+            } catch (IOException ex) {
+                // Error occurred while creating the File
+            }
+            // Continue only if the File was successfully created
+            if (photoFile != null) {
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,
+                        Uri.fromFile(photoFile));
+                startActivityForResult(takePictureIntent, TAKE_PICTURE);
+            }
+        }
     }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         if (resultCode != RESULT_OK) {
+            switch (requestCode) {
+                case TAKE_PICTURE:
+                    if (lastTakenPicture != null) {
+                        lastTakenPicture.delete();
+                        lastTakenPicture = null;
+                    }
+                    break;
+            }
             return;
         }
 
-        if (requestCode == RequestCodes.SELECT_PICTURE || requestCode == RequestCodes.SELECT_PICTURE_KITKAT) {
-            Uri selectedImageUri = data.getData();
-            onImageUri(selectedImageUri);
+        switch (requestCode) {
+            case SELECT_PICTURE:
+            case SELECT_PICTURE_KITKAT:
+                Uri selectedImageUri = data.getData();
+                onImageUri(selectedImageUri);
+                break;
+            case TAKE_PICTURE:
+                onImageUri(Uri.fromFile(lastTakenPicture));
+                break;
         }
     }
 
