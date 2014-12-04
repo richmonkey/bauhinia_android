@@ -1,6 +1,7 @@
 package com.example.imservice;
 
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.Application;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -26,6 +27,7 @@ import com.gameservice.sdk.push.api.SmartPushOpenUtils;
 import com.google.code.p.leveldb.LevelDB;
 
 import java.io.File;
+import java.util.List;
 
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
@@ -42,8 +44,15 @@ public class IMApplication extends Application implements Application.ActivityLi
     public void onCreate() {
         super.onCreate();
 
+        if (!isAppProcess()) {
+            Log.i(TAG, "service application create");
+            return;
+        }
+        Log.i(TAG, "app application create");
+
         LevelDB ldb = LevelDB.getDefaultDB();
         String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";
+        Log.i(TAG, "dir:" + dir);
         ldb.open(dir);
 
         FileCache fc = FileCache.getInstance();
@@ -91,6 +100,24 @@ public class IMApplication extends Application implements Application.ActivityLi
         }
     }
 
+    private boolean isAppProcess() {
+        Context context = getApplicationContext();
+        int pid = android.os.Process.myPid();
+        Log.i(TAG, "pid:" + pid + "package name:" + context.getPackageName());
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
+        for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
+            Log.i(TAG, "package name:" + appProcess.processName + " importance:" + appProcess.importance + " pid:" + appProcess.pid);
+            if (pid == appProcess.pid) {
+                if (appProcess.processName.equals(context.getPackageName())) {
+                    return true;
+                } else {
+                    return false;
+                }
+            }
+        }
+        return false;
+    }
 
     private final static String TAG = "beetle";
     private int resumed = 0;
