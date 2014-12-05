@@ -650,12 +650,15 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     }
     public void onPeerMessageACK(int msgLocalID, long uid) {
         Log.i(TAG, "message ack");
+        adapter.notifyDataSetChanged();
     }
     public void onPeerMessageRemoteACK(int msgLocalID, long uid) {
         Log.i(TAG, "message remote ack");
+        adapter.notifyDataSetChanged();
     }
     public void onPeerMessageFailure(int msgLocalID, long uid) {
         Log.i(TAG, "message failure");
+        adapter.notifyDataSetChanged();
     }
 
     void getPicture() {
