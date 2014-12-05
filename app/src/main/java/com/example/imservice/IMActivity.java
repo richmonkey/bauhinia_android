@@ -7,6 +7,9 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.ColorFilter;
+import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.*;
@@ -270,22 +273,31 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
                 }
                 group.addView(getLayoutInflater().inflate(contentLayout, group, false));
             }
-
+/*
             if (isOutMsg(position)) {
                 if ((msg.flags & MessageFlag.MESSAGE_FLAG_PEER_ACK) != 0) {
                     //对方已收到 2个勾
                     Log.i(TAG, "flag remote ack");
+                    ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
+                    flagView.setImageResource(R.drawable.msg_status_client_received);
                 } else if ((msg.flags & MessageFlag.MESSAGE_FLAG_ACK) != 0) {
                     //服务器已收到 1个勾
                     Log.i(TAG, "flag server ack");
+                    ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
+                    flagView.setImageResource(R.drawable.msg_status_server_receive);
                 } else if ((msg.flags & MessageFlag.MESSAGE_FLAG_FAILURE) != 0) {
                     //发送失败
                     Log.i(TAG, "flag failure");
+                    //发送中 2个灰色的勾
+                    ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
+                    flagView.setImageResource(R.drawable.msg_status_send_error);
                 } else {
                     //发送中 2个灰色的勾
+                    ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
+                    flagView.setImageResource(R.drawable.msg_status_gray_waiting);
                 }
             }
-
+*/
             switch (getMediaType(position)) {
                 case IMAGE:
                     ImageView imageView = ButterKnife.findById(convertView, R.id.image);
