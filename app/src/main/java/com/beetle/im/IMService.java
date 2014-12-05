@@ -1,22 +1,23 @@
 package com.beetle.im;
 
+
+import android.os.AsyncTask;
 import android.util.Log;
 import com.beetle.AsyncTCP;
 import com.beetle.TCPConnectCallback;
 import com.beetle.TCPReadCallback;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
 
 
+
 import static android.os.SystemClock.uptimeMillis;
-
-
-
-
-
 
 /**
  * Created by houxh on 14-7-21.
@@ -31,7 +32,7 @@ public class IMService {
     }
 
     private final String TAG = "imservice";
-    private final int HEARTBEAT = 10;
+    private final int HEARTBEAT = 60*3;
     private AsyncTCP tcp;
     private boolean stopped = true;
     private Timer connectTimer;
@@ -39,6 +40,9 @@ public class IMService {
     private int connectFailCount = 0;
     private int seq = 0;
     private ConnectState connectState = ConnectState.STATE_UNCONNECTED;
+
+    private String hostIP;
+    private int timestamp;
 
     private String host;
     private int port;
@@ -193,6 +197,40 @@ public class IMService {
         connectTimer.setTimer(t);
     }
 
+    public static int now() {
+        Date date = new Date();
+        long t = date.getTime();
+        return (int)(t/1000);
+    }
+
+    private void refreshHost() {
+        new AsyncTask<Void, Integer, String>() {
+            @Override
+            protected String doInBackground(Void... urls) {
+                return lookupHost(IMService.this.host);
+            }
+
+            private String lookupHost(String host) {
+                try {
+                    InetAddress inetAddress = InetAddress.getByName(host);
+                    Log.i(TAG, "host name:" + inetAddress.getHostName() + " " + inetAddress.getHostAddress());
+                    return inetAddress.getHostAddress();
+                } catch (UnknownHostException exception) {
+                    exception.printStackTrace();
+                    return "";
+                }
+            }
+
+            @Override
+            protected void onPostExecute(String result) {
+                if (result.length() > 0) {
+                    IMService.this.hostIP = result;
+                    IMService.this.timestamp = now();
+                }
+            }
+        }.execute();
+    }
+
     private void connect() {
         if (this.tcp != null) {
             return;
@@ -201,6 +239,26 @@ public class IMService {
             Log.e(TAG, "opps....");
             return;
         }
+
+        if (hostIP == null || hostIP.length() == 0) {
+            refreshHost();
+            IMService.this.connectFailCount++;
+            Log.i(TAG, "host ip is't resolved");
+
+            long t;
+            if (this.connectFailCount > 60) {
+                t = uptimeMillis() + 60*1000;
+            } else {
+                t = uptimeMillis() + this.connectFailCount*1000;
+            }
+            connectTimer.setTimer(t);
+            return;
+        }
+
+        if (now() - timestamp > 5*60) {
+            refreshHost();
+        }
+
         this.connectState = ConnectState.STATE_CONNECTING;
         IMService.this.publishConnectState();
         this.tcp = new AsyncTCP();
@@ -406,6 +464,7 @@ public class IMService {
     }
 
     private void sendHeartbeat() {
+        Log.i(TAG, "send heartbeat");
         Message msg = new Message();
         msg.cmd = Command.MSG_HEARTBEAT;
         sendMessage(msg);

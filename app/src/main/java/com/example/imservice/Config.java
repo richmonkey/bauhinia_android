@@ -5,8 +5,8 @@ package com.example.imservice;
  */
 public class Config {
 
-    public static final String API_URL = "http://106.186.122.158:5000";
-    public static final String HOST = "106.186.122.158";
+    public static final String API_URL = "http://im.yufeng.me:5000";
+    public static final String HOST = "im.yufeng.me";
     public static final int PORT = 23000;
 
     //public static final String API_URL = "http://192.168.33.10:8888";
