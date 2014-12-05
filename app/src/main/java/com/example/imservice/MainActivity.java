@@ -1,8 +1,10 @@
 package com.example.imservice;
 
 import android.app.*;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.media.RingtoneManager;
 import android.net.Uri;
 import android.os.Bundle;
@@ -25,6 +27,8 @@ import com.example.imservice.model.ContactDB;
 import com.example.imservice.model.PhoneNumber;
 import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
+import com.example.imservice.tools.*;
+import com.example.imservice.tools.Notification;
 
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,7 +43,11 @@ import rx.functions.Action1;
  */
 
 
-public class MainActivity extends Activity implements IMServiceObserver, AdapterView.OnItemClickListener, ContactDB.ContactObserver {
+public class MainActivity extends Activity implements IMServiceObserver, AdapterView.OnItemClickListener,
+        ContactDB.ContactObserver, NotificationCenter.NotificationCenterObserver {
+
+    private static final String SEND_MESSAGE_NAME = "send_message";
+
     List<Conversation> conversations;
 
     ListView lv;
@@ -133,6 +141,8 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         };
         this.refreshTimer.setTimer(1000*1, 1000*3600);
         this.refreshTimer.resume();
+        NotificationCenter nc = NotificationCenter.defaultCenter();
+        nc.addObserver(this, SEND_MESSAGE_NAME);
     }
 
     @Override
@@ -142,6 +152,8 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         IMService im =  IMService.getInstance();
         im.removeObserver(this);
         this.refreshTimer.suspend();
+        NotificationCenter nc = NotificationCenter.defaultCenter();
+        nc.removeObserver(this);
         Log.i(TAG, "main activity destroyed");
     }
 
@@ -288,5 +300,27 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
     public void onPeerMessageRemoteACK(int msgLocalID, long uid) {
     }
     public void onPeerMessageFailure(int msgLocalID, long uid) {
+    }
+
+    @Override
+    public void onNotification(Notification notification) {
+        IMessage imsg = (IMessage)notification.obj;
+        Conversation conversation = null;
+        for (int i = 0; i < conversations.size(); i++) {
+            Conversation conv = conversations.get(i);
+            if (conv.cid == imsg.receiver) {
+                conversation = conv;
+                break;
+            }
+        }
+
+        if (conversation == null) {
+            conversation = new Conversation();
+            conversation.cid = imsg.receiver;
+            conversation.name = getUserName(imsg.receiver);
+            conversations.add(conversation);
+        }
+        conversation.message = imsg;
+        adapter.notifyDataSetChanged();
     }
 }

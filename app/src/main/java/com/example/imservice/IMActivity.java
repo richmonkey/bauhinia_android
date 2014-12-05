@@ -36,6 +36,8 @@ import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
 import com.example.imservice.tools.AudioDownloader;
 import com.example.imservice.tools.FileCache;
+import com.example.imservice.tools.Notification;
+import com.example.imservice.tools.NotificationCenter;
 import com.example.imservice.tools.Outbox;
 import com.google.gson.JsonObject;
 import com.squareup.picasso.Picasso;
@@ -71,6 +73,7 @@ import static com.example.imservice.constant.RequestCodes.*;
 
 public class IMActivity extends Activity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener,
         AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver, Outbox.OutboxObserver {
+    private static final String SEND_MESSAGE_NAME = "send_message";
     private final String TAG = "imservice";
 
     private long currentUID;
@@ -133,6 +136,10 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        NotificationCenter nc = NotificationCenter.defaultCenter();
+        Notification notification = new Notification(imsg, SEND_MESSAGE_NAME);
+        nc.postNotification(notification);
     }
 
     @Override
@@ -583,6 +590,10 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         inputManager.hideSoftInputFromWindow(editText.getWindowToken(), 0);
         adapter.notifyDataSetChanged();
         listview.smoothScrollToPosition(messages.size()-1);
+
+        NotificationCenter nc = NotificationCenter.defaultCenter();
+        Notification notification = new Notification(imsg, SEND_MESSAGE_NAME);
+        nc.postNotification(notification);
     }
 
     public void onConnectState(IMService.ConnectState state) {
@@ -743,6 +754,10 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
 
 
             Outbox.getInstance().uploadImage(imsg, path);
+
+            NotificationCenter nc = NotificationCenter.defaultCenter();
+            Notification notification = new Notification(imsg, SEND_MESSAGE_NAME);
+            nc.postNotification(notification);
 
         } catch (IOException e) {
             e.printStackTrace();
