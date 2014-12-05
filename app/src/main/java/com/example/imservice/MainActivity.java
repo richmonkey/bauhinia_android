@@ -129,11 +129,13 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.i(TAG, "main activity create...");
+
         setContentView(R.layout.activity_main);
 
         ContactDB.getInstance().loadContacts();
         ContactDB.getInstance().addObserver(this);
-        Log.i(TAG, "start im service");
+
         IMService im =  IMService.getInstance();
         im.addObserver(this);
 
@@ -169,7 +171,9 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         Log.i(TAG, "contactdb changed");
 
         for (Conversation conv : conversations) {
-            conv.name = getUserName(conv.cid);
+            User u = getUser(conv.cid);
+            conv.name = u.name;
+            conv.avatar = u.avatar;
         }
         adapter.notifyDataSetChanged();
 
@@ -244,16 +248,6 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         return u;
     }
 
-    private String getUserName(long uid) {
-        User u = UserDB.getInstance().loadUser(uid);
-        Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
-        if (c == null) {
-            return u.number;
-        } else {
-            return c.displayName;
-        }
-    }
-
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position,
                             long id) {
@@ -290,7 +284,9 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         if (conversation == null) {
             conversation = new Conversation();
             conversation.cid = msg.sender;
-            conversation.name = getUserName(msg.sender);
+            User u = getUser(msg.sender);
+            conversation.name = u.name;
+            conversation.avatar = u.avatar;
             conversations.add(conversation);
         }
 
@@ -335,7 +331,9 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
         if (conversation == null) {
             conversation = new Conversation();
             conversation.cid = imsg.receiver;
-            conversation.name = getUserName(imsg.receiver);
+            User u = getUser(imsg.receiver);
+            conversation.name = u.name;
+            conversation.avatar = u.avatar;
             conversations.add(conversation);
         }
         conversation.message = imsg;
