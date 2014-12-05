@@ -8,6 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.BaseAdapter;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -16,6 +17,7 @@ import com.example.imservice.api.IMHttpFactory;
 import com.example.imservice.api.body.PostPhone;
 import com.example.imservice.api.types.User;
 import com.example.imservice.model.*;
+import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -63,6 +65,13 @@ public class NewConversation extends Activity implements AdapterView.OnItemClick
             tv.setText(c.name);
             TextView content = ButterKnife.findById(view, R.id.content);
             content.setText(c.number);
+
+            if (c.avatar != null && c.avatar.length() > 0) {
+                ImageView imageView = (ImageView) view.findViewById(R.id.header);
+                Picasso.with(getBaseContext())
+                        .load(c.avatar)
+                        .into(imageView);
+            }
             return view;
         }
     }
