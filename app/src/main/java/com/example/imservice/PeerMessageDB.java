@@ -19,6 +19,7 @@ class Conversation {
     public long cid;
     public IMessage message;
     public String name;
+    public String avatar;
 }
 interface ConversationIterator {
     public Conversation next();

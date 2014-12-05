@@ -10,9 +10,9 @@ public class MessageFormatter {
         if (content instanceof IMessage.Text) {
             return ((IMessage.Text) content).text;
         } else if (content instanceof IMessage.Image) {
-            return "Sent a photo";
+            return "一张图片";
         } else if (content instanceof IMessage.Audio) {
-            return "Sent a audio";
+            return "一段语音";
         } else {
             return content.getRaw();
         }

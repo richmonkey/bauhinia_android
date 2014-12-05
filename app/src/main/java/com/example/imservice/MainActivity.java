@@ -29,12 +29,14 @@ import com.example.imservice.api.types.User;
 import com.example.imservice.model.UserDB;
 import com.example.imservice.tools.*;
 import com.example.imservice.tools.Notification;
+import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 
+import butterknife.ButterKnife;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 
@@ -52,8 +54,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     ListView lv;
 
-    private long uid;
-    private static final String TAG = "imservice";
+    private static final String TAG = "beetle";
 
     private Timer refreshTimer;
 
@@ -86,6 +87,13 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
             tv = (TextView)view.findViewById(R.id.content);
             tv.setText(MessageFormatter.messageContentToString(c.message.content));
+
+            if (c.avatar != null && c.avatar.length() > 0) {
+                ImageView imageView = (ImageView) view.findViewById(R.id.header);
+                Picasso.with(getBaseContext())
+                        .load(c.avatar)
+                        .into(imageView);
+            }
             return view;
         }
     }
@@ -125,7 +133,6 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
         ContactDB.getInstance().loadContacts();
         ContactDB.getInstance().addObserver(this);
-        this.uid = Token.getInstance().uid;
         Log.i(TAG, "start im service");
         IMService im =  IMService.getInstance();
         im.addObserver(this);
@@ -221,9 +228,20 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
             if (conv == null) {
                 break;
             }
-            conv.name = getUserName(conv.cid);
+            User u = getUser(conv.cid);
+            conv.name = u.name;
+            conv.avatar = u.avatar;
             conversations.add(conv);
         }
+    }
+
+    private User getUser(long uid) {
+        User u = UserDB.getInstance().loadUser(uid);
+        Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
+        if (c != null) {
+            u.name = c.displayName;
+        }
+        return u;
     }
 
     private String getUserName(long uid) {
