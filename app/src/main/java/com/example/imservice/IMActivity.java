@@ -870,7 +870,8 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     public void onAudioUploadFail(IMessage msg) {
         Log.i(TAG, "audio upload fail");
         PeerMessageDB.getInstance().markMessageFailure(msg.msgLocalID, msg.receiver);
-        Toast.makeText(IMActivity.this, "上传失败", Toast.LENGTH_SHORT).show();
+        msg.flags = msg.flags | MessageFlag.MESSAGE_FLAG_FAILURE;
+        adapter.notifyDataSetChanged();
     }
 
     @Override
@@ -893,6 +894,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     public void onImageUploadFail(IMessage msg) {
         Log.i(TAG, "image upload fail");
         PeerMessageDB.getInstance().markMessageFailure(msg.msgLocalID, msg.receiver);
-        Toast.makeText(IMActivity.this, "上传失败", Toast.LENGTH_SHORT).show();
+        msg.flags = msg.flags | MessageFlag.MESSAGE_FLAG_FAILURE;
+        adapter.notifyDataSetChanged();
     }
 }
