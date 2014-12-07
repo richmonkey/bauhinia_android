@@ -112,7 +112,8 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
-        MenuItem newItem=menu.add(0,0,0,"new");
+        MenuItem newItem=menu.add(0,0,0, "new");
+        newItem.setIcon(R.drawable.icon_new_chat_big);
         newItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {
