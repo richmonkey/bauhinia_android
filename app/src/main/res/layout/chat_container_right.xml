@@ -16,6 +16,14 @@
         android:layout_height="wrap_content"
         android:background="@drawable/chatto_bg"
         android:layout_marginLeft="10dp"
-        />
+        >
+        <ImageView
+            android:id="@+id/flag"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@drawable/msg_status_client_read"
+            android:layout_gravity="bottom|right" />
+    </FrameLayout>
+
 
 </RelativeLayout>

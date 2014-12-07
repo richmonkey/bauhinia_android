@@ -279,31 +279,27 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
                 }
                 group.addView(getLayoutInflater().inflate(contentLayout, group, false));
             }
-/*
+
             if (isOutMsg(position)) {
                 if ((msg.flags & MessageFlag.MESSAGE_FLAG_PEER_ACK) != 0) {
-                    //对方已收到 2个勾
                     Log.i(TAG, "flag remote ack");
                     ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
                     flagView.setImageResource(R.drawable.msg_status_client_received);
                 } else if ((msg.flags & MessageFlag.MESSAGE_FLAG_ACK) != 0) {
-                    //服务器已收到 1个勾
                     Log.i(TAG, "flag server ack");
                     ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
                     flagView.setImageResource(R.drawable.msg_status_server_receive);
                 } else if ((msg.flags & MessageFlag.MESSAGE_FLAG_FAILURE) != 0) {
                     //发送失败
                     Log.i(TAG, "flag failure");
-                    //发送中 2个灰色的勾
                     ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
                     flagView.setImageResource(R.drawable.msg_status_send_error);
                 } else {
-                    //发送中 2个灰色的勾
                     ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
                     flagView.setImageResource(R.drawable.msg_status_gray_waiting);
                 }
             }
-*/
+
             switch (getMediaType(position)) {
                 case IMAGE:
                     ImageView imageView = ButterKnife.findById(convertView, R.id.image);
@@ -647,16 +643,55 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
             }
         }
     }
+    private IMessage findMessage(int msgLocalID) {
+        for (IMessage imsg : messages) {
+            if (imsg.msgLocalID == msgLocalID) {
+                return imsg;
+            }
+        }
+        return null;
+    }
+
     public void onPeerMessageACK(int msgLocalID, long uid) {
+        if (peerUID != uid) {
+            return;
+        }
         Log.i(TAG, "message ack");
+
+        IMessage imsg = findMessage(msgLocalID);
+        if (imsg == null) {
+            Log.i(TAG, "can't find msg:" + msgLocalID);
+            return;
+        }
+        imsg.flags = imsg.flags | MessageFlag.MESSAGE_FLAG_ACK;
         adapter.notifyDataSetChanged();
     }
     public void onPeerMessageRemoteACK(int msgLocalID, long uid) {
+        if (peerUID != uid) {
+            return;
+        }
         Log.i(TAG, "message remote ack");
+
+        IMessage imsg = findMessage(msgLocalID);
+        if (imsg == null) {
+            Log.i(TAG, "can't find msg:" + msgLocalID);
+            return;
+        }
+        imsg.flags = imsg.flags | MessageFlag.MESSAGE_FLAG_PEER_ACK;
         adapter.notifyDataSetChanged();
     }
     public void onPeerMessageFailure(int msgLocalID, long uid) {
+        if (peerUID != uid) {
+            return;
+        }
         Log.i(TAG, "message failure");
+
+        IMessage imsg = findMessage(msgLocalID);
+        if (imsg == null) {
+            Log.i(TAG, "can't find msg:" + msgLocalID);
+            return;
+        }
+        imsg.flags = imsg.flags | MessageFlag.MESSAGE_FLAG_FAILURE;
         adapter.notifyDataSetChanged();
     }
 
