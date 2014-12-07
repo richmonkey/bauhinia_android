@@ -102,15 +102,12 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
 
     @Override
     public void onRecordComplete(String file, final long mduration) {
-        Audio audio = new Audio();
-        audio.srcUrl = localAudioURL();
-
         long duration = mduration/1000;
 
         JsonObject content = new JsonObject();
         JsonObject audioJson = new JsonObject();
         audioJson.addProperty("duration", duration);
-        audioJson.addProperty("url", audio.srcUrl);
+        audioJson.addProperty("url", localAudioURL());
         content.add(AUDIO, audioJson);
 
         IMessage imsg = new IMessage();
@@ -130,9 +127,11 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
 
         Outbox ob = Outbox.getInstance();
         try {
+            IMessage.Audio audio = (IMessage.Audio)imsg.content;
             FileInputStream is = new FileInputStream(new File(file));
-            FileCache.getInstance().storeFile(audio.srcUrl, is);
-            ob.uploadAudio(imsg, FileCache.getInstance().getCachedFilePath(audio.srcUrl));
+            Log.i(TAG, "store audio url:" + audio.url);
+            FileCache.getInstance().storeFile(audio.url, is);
+            ob.uploadAudio(imsg, FileCache.getInstance().getCachedFilePath(audio.url));
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -771,6 +770,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
 
     void play(IMessage message) {
         IMessage.Audio audio = (IMessage.Audio) message.content;
+        Log.i(TAG, "url:" + audio.url);
         if (FileCache.getInstance().isCached(audio.url)) {
             try {
                 audioUtil.startPlay(FileCache.getInstance().getCachedFilePath(audio.url));
@@ -815,7 +815,6 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     public void onAudioUploadSuccess(IMessage imsg, String url) {
         Log.i(TAG, "audio upload success:" + url);
         IMessage.Audio audio = (IMessage.Audio)imsg.content;
-        audio.url = url;
 
         IMMessage msg = new IMMessage();
         msg.sender = this.currentUID;

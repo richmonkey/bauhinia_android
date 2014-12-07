@@ -54,7 +54,7 @@ public class FileCache {
     }
 
     public boolean isCached(String key) {
-        return getFileName(key) != null;
+        return getCachedFilePath(key) != null;
     }
 
     private String getFileName(String key) {
