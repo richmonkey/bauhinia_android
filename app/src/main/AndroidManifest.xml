@@ -74,16 +74,14 @@
 
         <!-- 必需： push 服务配置 -->
         <service
-            android:name="com.gameservice.sdk.push.api.SmartPushService"
-            android:process=":ngds" />
+            android:name="com.gameservice.sdk.push.api.SmartPushService"/>
 
         <!-- 必需： push 消息接收配置 -->
         <receiver
             android:name="com.gameservice.sdk.push.api.SmartPushReceiver"
             android:enabled="true"
             android:exported="false"
-            android:priority="90000"
-            android:process=":ngds" >
+            android:priority="90000" >
             <intent-filter>
                 <action android:name="android.intent.action.PACKAGE_ADDED" />
                 <action android:name="android.intent.action.PACKAGE_CHANGED" />

@@ -20,6 +20,7 @@ import com.example.imservice.api.body.PostAuthRefreshToken;
 import com.example.imservice.model.ContactDB;
 import com.example.imservice.tools.BinAscii;
 import com.example.imservice.tools.FileCache;
+import com.gameservice.sdk.crashdump.NgdsCrashHandler;
 import com.gameservice.sdk.push.api.IMsgReceiver;
 import com.gameservice.sdk.push.api.SmartPush;
 import com.gameservice.sdk.push.api.SmartPushOpenUtils;
@@ -98,6 +99,15 @@ public class IMApplication extends Application implements Application.ActivityLi
             im.setUid(Token.getInstance().uid);
             im.start();
         }
+        initErrorHandler();
+    }
+
+    private void initErrorHandler() {
+        //交给crashHandler自行判断,默认路径 /mnt/sdcard/.ngdsCrashDump/{your pacakagename}
+        Thread.UncaughtExceptionHandler defaultUncaughtExceptionHandler =
+                Thread.getDefaultUncaughtExceptionHandler();
+        Thread.setDefaultUncaughtExceptionHandler(
+                new NgdsCrashHandler(this, defaultUncaughtExceptionHandler));
     }
 
     private boolean isAppProcess() {
