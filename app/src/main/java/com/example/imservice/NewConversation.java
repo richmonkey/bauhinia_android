@@ -1,9 +1,7 @@
 package com.example.imservice;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -12,25 +10,19 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.example.imservice.api.IMHttp;
-import com.example.imservice.api.IMHttpFactory;
-import com.example.imservice.api.body.PostPhone;
+import com.example.imservice.activity.BaseActivity;
 import com.example.imservice.api.types.User;
 import com.example.imservice.model.*;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
 
 import butterknife.ButterKnife;
-import rx.android.schedulers.AndroidSchedulers;
-import rx.functions.Action1;
 
 /**
  * Created by houxh on 14-8-12.
  */
-public class NewConversation extends Activity implements AdapterView.OnItemClickListener {
+public class NewConversation extends BaseActivity implements AdapterView.OnItemClickListener {
     ArrayList<User> users;
 
     private ListView lv;

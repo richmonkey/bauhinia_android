@@ -22,6 +22,7 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 import com.beetle.im.*;
+import com.example.imservice.activity.BaseActivity;
 import com.example.imservice.activity.PhotoActivity;
 
 import com.example.imservice.api.types.Audio;
@@ -52,7 +53,6 @@ import java.io.FileInputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
@@ -71,7 +71,7 @@ import static android.os.SystemClock.uptimeMillis;
 import static com.example.imservice.constant.RequestCodes.*;
 
 
-public class IMActivity extends Activity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener,
+public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener,
         AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver, Outbox.OutboxObserver {
     private static final String SEND_MESSAGE_NAME = "send_message";
     private final String TAG = "imservice";
@@ -91,7 +91,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
     private TextView titleView;
     private TextView subtitleView;
 
-    private ActionBar actionBar;
+    private android.support.v7.app.ActionBar actionBar;
 
     BaseAdapter adapter;
 
@@ -370,7 +370,7 @@ public class IMActivity extends Activity implements IMServiceObserver, MessageKe
         listview.setAdapter(adapter);
         editText = (EditText)findViewById(R.id.text_message);
 
-        actionBar=getActionBar();
+        actionBar=getSupportActionBar();
         actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
         actionBar.setCustomView(R.layout.im_actionbar);
         actionBar.show();

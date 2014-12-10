@@ -1,6 +1,5 @@
 package com.example.imservice.activity;
 
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -15,7 +14,7 @@ import butterknife.ButterKnife;
 import butterknife.InjectView;
 
 
-public class PhotoActivity extends Activity {
+public class PhotoActivity extends BaseActivity {
     static final String EXTRA_URL = "im.url";
 
     @InjectView(R.id.photo)

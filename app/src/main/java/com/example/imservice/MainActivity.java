@@ -1,12 +1,6 @@
 package com.example.imservice;
 
-import android.app.*;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
-import android.media.RingtoneManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
@@ -18,6 +12,7 @@ import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
 import com.beetle.im.Timer;
+import com.example.imservice.activity.BaseActivity;
 import com.example.imservice.api.IMHttp;
 import com.example.imservice.api.IMHttpFactory;
 import com.example.imservice.api.body.PostPhone;
@@ -36,7 +31,6 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 
-import butterknife.ButterKnife;
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 
@@ -45,7 +39,7 @@ import rx.functions.Action1;
  */
 
 
-public class MainActivity extends Activity implements IMServiceObserver, AdapterView.OnItemClickListener,
+public class MainActivity extends BaseActivity implements IMServiceObserver, AdapterView.OnItemClickListener,
         ContactDB.ContactObserver, NotificationCenter.NotificationCenterObserver {
 
     private static final String SEND_MESSAGE_NAME = "send_message";
@@ -58,7 +52,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     private Timer refreshTimer;
 
-    private ActionBar actionBar;
+    private android.support.v7.app.ActionBar actionBar;
     private BaseAdapter adapter;
     class ConversationAdapter extends BaseAdapter {
         @Override
@@ -100,7 +94,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
 
     // 初始化组件
     private void initWidget() {
-        actionBar=getActionBar();
+        actionBar = getSupportActionBar();
         actionBar.show();
 
         lv = (ListView) findViewById(R.id.list);
@@ -113,7 +107,7 @@ public class MainActivity extends Activity implements IMServiceObserver, Adapter
     public boolean onCreateOptionsMenu(Menu menu) {
         super.onCreateOptionsMenu(menu);
         MenuItem newItem=menu.add(0,0,0, "new");
-        newItem.setIcon(R.drawable.icon_new_chat_big);
+        newItem.setIcon(R.drawable.ic_new_conversation);
         newItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
             @Override
             public boolean onMenuItemClick(MenuItem item) {

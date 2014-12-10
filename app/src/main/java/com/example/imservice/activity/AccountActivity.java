@@ -1,6 +1,5 @@
 package com.example.imservice.activity;
 
-import android.app.Activity;
 import android.os.Bundle;
 
 import com.example.imservice.tools.event.BusProvider;
@@ -10,7 +9,7 @@ import com.squareup.otto.Subscribe;
 /**
  * Created by tsung on 12/2/14.
  */
-public class AccountActivity extends Activity {
+public class AccountActivity extends BaseActivity {
     final Object messageHandler = new Object() {
         @Subscribe
         public void onLoginSuccess(LoginSuccessEvent event) {
