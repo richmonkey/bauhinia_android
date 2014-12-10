@@ -303,7 +303,7 @@ public class IMService {
             }
         });
 
-        boolean r = this.tcp.connect(this.host, this.port);
+        boolean r = this.tcp.connect(this.hostIP, this.port);
         Log.i(TAG, "tcp connect:" + r);
         if (!r) {
             this.tcp = null;
