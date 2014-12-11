@@ -182,11 +182,7 @@ public class ContactDB {
             int isVisible = cursor.getInt(index4);
 
             long updatedTimestamp = cursor.getLong(index3);
-            if (isVisible == 0) {
-                Log.i(TAG, "contact id:" + id + " name:" + name + " is unvisisble");
-                continue;
-            }
-            Log.i(TAG, "contact id:" + id + " name:" + name + " is visisble");
+            Log.i(TAG, "contact id:" + id + " name:" + name + " visisble:" +isVisible);
             c.cid = id;
             c.displayName = name;
             c.updatedTimestamp = updatedTimestamp;
