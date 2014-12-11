@@ -12,15 +12,13 @@ import android.util.Log;
 
 import java.util.ArrayList;
 
-
-//todo 处理多账号问题
 public class ContactDB {
 
     public static interface ContactObserver {
         public void OnExternalChange();
     }
 
-    private final String TAG = "imservice";
+    private final String TAG = "beetle";
     private static ContactDB instance = new ContactDB();
 
     public static ContactDB getInstance() {
@@ -77,7 +75,6 @@ public class ContactDB {
     public void loadContacts() {
         this.contacts = new ArrayList<Contact>();
         readContacts(this.contacts);
-        readRaw();
         readData();
     }
 
@@ -159,6 +156,7 @@ public class ContactDB {
                 ContactsContract.Contacts._ID,
                 ContactsContract.Contacts.DISPLAY_NAME,
                 ContactsContract.Contacts.CONTACT_LAST_UPDATED_TIMESTAMP,
+                ContactsContract.Contacts.IN_VISIBLE_GROUP,
         };
 
         Cursor cursor = contentResolver.query(
@@ -177,12 +175,19 @@ public class ContactDB {
         int index1 = cursor.getColumnIndex(ContactsContract.Contacts._ID);
         int index2 = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
         int index3 = cursor.getColumnIndex(ContactsContract.Contacts.CONTACT_LAST_UPDATED_TIMESTAMP);
+        int index4 = cursor.getColumnIndex(ContactsContract.Contacts.IN_VISIBLE_GROUP);
         while (cursor.moveToNext()) {
             Contact c = new Contact();
             long id = cursor.getLong(index1);
             String name = cursor.getString(index2);
+            int isVisible = cursor.getInt(index4);
+
             long updatedTimestamp = cursor.getLong(index3);
-            Log.i(TAG, ""+id + " " + name);
+            if (isVisible == 0) {
+                Log.i(TAG, "contact id:" + id + " name:" + name + " is unvisisble");
+                continue;
+            }
+            Log.i(TAG, "contact id:" + id + " name:" + name + " is visisble");
             c.cid = id;
             c.displayName = name;
             c.updatedTimestamp = updatedTimestamp;
@@ -327,14 +332,13 @@ public class ContactDB {
                 String number = cursor.getString(index);
                 index = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.LABEL);
                 String label = cursor.getString(index);
-                Log.i(TAG, "number:" + number + " " + label);
 
                 Contact.ContactData data = new Contact.ContactData();
                 data.value = number;
                 data.label = label;
                 c.phoneNumbers.add(data);
+                Log.i(TAG, "contact:" + c.displayName + " cid:" + c.cid + " phone:" + number + " lable:" + label);
             }
-            Log.i(TAG, "data:" + id + " " + cid + " " + rid + " " + type);
         }
 
         cursor.close();
@@ -392,18 +396,18 @@ public class ContactDB {
                 String number = cursor.getString(index);
                 index = cursor.getColumnIndex(ContactsContract.CommonDataKinds.Phone.LABEL);
                 String label = cursor.getString(index);
-                Log.i(TAG, "number:" + number + " " + label);
 
                 Contact.ContactData data = new Contact.ContactData();
                 data.value = number;
                 data.label = label;
                 Contact c = findContact(cid);
                 if (c == null) {
+                    Log.w(TAG, "can't find contact:" + cid);
                     continue;
                 }
                 c.phoneNumbers.add(data);
+                Log.i(TAG, "contact:" + c.displayName + " cid:" + c.cid + " phone:" + number + " lable:" + label);
             }
-            Log.i(TAG, "data:" + id + " " + cid + " " + rid + " " + type);
         }
 
         cursor.close();

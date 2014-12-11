@@ -208,7 +208,11 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
                     public void call(ArrayList<User> users) {
                         UserDB userDB = UserDB.getInstance();
                         for (int i = 0; i < users.size(); i++) {
-                            userDB.addUser(users.get(i));
+                            User u = users.get(i);
+                            if (u.uid > 0) {
+                                userDB.addUser(u);
+                                Log.i(TAG, "user:"+ u.uid + " number:" + u.number);
+                            }
                         }
                     }
                 }, new Action1<Throwable>() {
