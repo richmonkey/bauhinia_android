@@ -134,19 +134,19 @@ public class IMApplication extends Application implements Application.ActivityLi
     private int stopped = 0;
 
     public void onActivityCreated(Activity activity, Bundle bundle) {
-        Log.e("","onActivityCreated:" + activity.getLocalClassName());
+        Log.i("","onActivityCreated:" + activity.getLocalClassName());
     }
 
     public void onActivityDestroyed(Activity activity) {
-        Log.e("","onActivityDestroyed:" + activity.getLocalClassName());
+        Log.i("","onActivityDestroyed:" + activity.getLocalClassName());
     }
 
     public void onActivityPaused(Activity activity) {
-        Log.e("","onActivityPaused:" + activity.getLocalClassName());
+        Log.i("","onActivityPaused:" + activity.getLocalClassName());
     }
 
     public void onActivityResumed(Activity activity) {
-        Log.e("","onActivityResumed:" + activity.getLocalClassName());
+        Log.i("","onActivityResumed:" + activity.getLocalClassName());
         ++resumed;
 
         //resumed from backgroud
@@ -168,15 +168,15 @@ public class IMApplication extends Application implements Application.ActivityLi
 
     public void onActivitySaveInstanceState(Activity activity,
                                             Bundle outState) {
-        Log.e("","onActivitySaveInstanceState:" + activity.getLocalClassName());
+        Log.i("","onActivitySaveInstanceState:" + activity.getLocalClassName());
     }
 
     public void onActivityStarted(Activity activity) {
-        Log.e("","onActivityStarted:" + activity.getLocalClassName());
+        Log.i("","onActivityStarted:" + activity.getLocalClassName());
     }
 
     public void onActivityStopped(Activity activity) {
-        Log.e("","onActivityStopped:" + activity.getLocalClassName());
+        Log.i("","onActivityStopped:" + activity.getLocalClassName());
         ++stopped;
         if (stopped == resumed) {
             Log.i(TAG, "app enter background stop imservice");
