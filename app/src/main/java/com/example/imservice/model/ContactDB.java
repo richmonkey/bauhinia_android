@@ -156,6 +156,7 @@ public class ContactDB {
                 ContactsContract.Contacts._ID,
                 ContactsContract.Contacts.DISPLAY_NAME,
                 ContactsContract.Contacts.CONTACT_LAST_UPDATED_TIMESTAMP,
+                ContactsContract.Contacts.IN_VISIBLE_GROUP,
         };
 
         Cursor cursor = contentResolver.query(
@@ -174,12 +175,19 @@ public class ContactDB {
         int index1 = cursor.getColumnIndex(ContactsContract.Contacts._ID);
         int index2 = cursor.getColumnIndex(ContactsContract.Contacts.DISPLAY_NAME);
         int index3 = cursor.getColumnIndex(ContactsContract.Contacts.CONTACT_LAST_UPDATED_TIMESTAMP);
+        int index4 = cursor.getColumnIndex(ContactsContract.Contacts.IN_VISIBLE_GROUP);
         while (cursor.moveToNext()) {
             Contact c = new Contact();
             long id = cursor.getLong(index1);
             String name = cursor.getString(index2);
+            int isVisible = cursor.getInt(index4);
+
             long updatedTimestamp = cursor.getLong(index3);
-            Log.i(TAG, "contact id:"+id + " name:" + name);
+            if (isVisible == 0) {
+                Log.i(TAG, "contact id:" + id + " name:" + name + "is unvisisble");
+                continue;
+            }
+            Log.i(TAG, "contact id:" + id + " name:" + name + "is visisble");
             c.cid = id;
             c.displayName = name;
             c.updatedTimestamp = updatedTimestamp;
