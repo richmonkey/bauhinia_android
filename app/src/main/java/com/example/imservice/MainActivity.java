@@ -334,4 +334,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         conversation.message = imsg;
         adapter.notifyDataSetChanged();
     }
+
+    public boolean canBack() {
+        return false;
+    }
 }

@@ -1,19 +1,14 @@
 package com.example.imservice;
 
-import android.app.ActionBar;
-
-import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.ColorFilter;
-import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.*;
 import android.provider.MediaStore;
+import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -24,8 +19,6 @@ import android.widget.*;
 import com.beetle.im.*;
 import com.example.imservice.activity.BaseActivity;
 import com.example.imservice.activity.PhotoActivity;
-
-import com.example.imservice.api.types.Audio;
 
 import com.example.imservice.constant.MessageKeys;
 
@@ -87,11 +80,6 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     private static final int OUT_MSG = 1;
 
     private EditText editText;
-
-    private TextView titleView;
-    private TextView subtitleView;
-
-    private android.support.v7.app.ActionBar actionBar;
 
     BaseAdapter adapter;
 
@@ -175,6 +163,14 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     @InjectView(R.id.audio_recorder)
     AudioRecorder audioRecorder;
     AudioUtil audioUtil;
+
+    @InjectView(R.id.title)
+    TextView titleView;
+    @InjectView(R.id.subtitle)
+    TextView subtitleView;
+    @InjectView(R.id.support_toolbar)
+    Toolbar toolbar;
+
 
     class ChatAdapter extends BaseAdapter implements ContentTypes {
         @Override
@@ -370,14 +366,8 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         listview.setAdapter(adapter);
         editText = (EditText)findViewById(R.id.text_message);
 
-        actionBar=getSupportActionBar();
-        actionBar.setDisplayOptions(ActionBar.DISPLAY_SHOW_CUSTOM);
-        actionBar.setCustomView(R.layout.im_actionbar);
-        actionBar.show();
-        titleView = (TextView)actionBar.getCustomView().findViewById(R.id.title);
-        subtitleView = (TextView)actionBar.getCustomView().findViewById(R.id.subtitle);
         titleView.setText(peer.name);
-        setSubtitle();
+        setSupportActionBar(toolbar);
         IMService.getInstance().addObserver(this);
         IMService.getInstance().subscribeState(peer.uid);
 
