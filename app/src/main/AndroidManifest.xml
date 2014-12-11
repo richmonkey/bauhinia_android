@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.example.imservice" >
+    package="com.beetle.bauhinia"
+    >
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
@@ -22,13 +23,13 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
 
     <application
-        android:name="com.example.imservice.IMApplication"
+        android:name="com.beetle.bauhinia.IMApplication"
         android:label="@string/app_name"
         android:icon="@drawable/me"
         android:theme="@style/AppTheme"
         >
         <activity
-            android:name=".activity.LoginActivity"
+            android:name="com.beetle.bauhinia.activity.LoginActivity"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -37,7 +38,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.imservice.MainActivity"
+            android:name="com.beetle.bauhinia.MainActivity"
             android:exported="true"
             android:launchMode="singleTask" >
             <intent-filter>
@@ -45,7 +46,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.imservice.NewConversation"
+            android:name="com.beetle.bauhinia.NewConversation"
             android:exported="true"
             android:launchMode="singleTask" >
             <intent-filter>
@@ -53,7 +54,7 @@
             </intent-filter>
         </activity>
         <activity
-            android:name="com.example.imservice.IMActivity"
+            android:name="com.beetle.bauhinia.IMActivity"
             android:exported="true"
             android:launchMode="singleTask"
             android:theme="@style/AppTheme.NoActionBar"
@@ -102,11 +103,11 @@
         </receiver>
 
         <activity
-            android:name=".activity.PhotoActivity"
+            android:name="com.beetle.bauhinia.activity.PhotoActivity"
             android:label="@string/title_activity_photo" >
         </activity>
         <activity
-            android:name=".activity.VerifyActivity"
+            android:name="com.beetle.bauhinia.activity.VerifyActivity"
             android:label="@string/title_activity_verify" >
         </activity>
     </application>

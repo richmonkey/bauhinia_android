@@ -5,7 +5,7 @@ import android.content.Context;
 import android.test.ApplicationTestCase;
 import android.util.Log;
 
-import com.example.imservice.tools.FileCache;
+import com.beetle.bauhinia.tools.FileCache;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
