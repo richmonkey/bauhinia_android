@@ -2,6 +2,7 @@ package com.beetle.bauhinia;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -233,7 +234,11 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
                 break;
             }
             User u = getUser(conv.cid);
-            conv.name = u.name;
+            if (TextUtils.isEmpty(u.name)) {
+                conv.name = u.number;
+            } else {
+                conv.name = u.name;
+            }
             conv.avatar = u.avatar;
             conversations.add(conv);
         }
