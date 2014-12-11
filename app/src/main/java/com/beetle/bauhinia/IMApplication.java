@@ -96,7 +96,7 @@ public class IMApplication extends Application implements Application.ActivityLi
         //already login
         if (Token.getInstance().uid > 0) {
             im.setUid(Token.getInstance().uid);
-            im.start();
+
         }
         initErrorHandler();
     }
@@ -148,10 +148,13 @@ public class IMApplication extends Application implements Application.ActivityLi
         Log.i("","onActivityResumed:" + activity.getLocalClassName());
         ++resumed;
 
-        //resumed from backgroud
-        if (resumed - stopped == 1 && stopped > 0 ) {
+        if (resumed - stopped == 1 ) {
             if (Token.getInstance().uid > 0 && isNetworkConnected(this)) {
-                Log.i(TAG, "app enter foreground start imservice");
+                if (stopped == 0) {
+                    Log.i(TAG, "app startup start imservice");
+                } else {
+                    Log.i(TAG, "app enter foreground start imservice");
+                }
                 IMService.getInstance().start();
             }
         }
