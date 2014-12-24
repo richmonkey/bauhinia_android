@@ -25,7 +25,7 @@ public class UserDB {
                 u.number = phoneNumber.getNumber();
                 u.zone = phoneNumber.getZone();
             } else {
-                String[] t = ("" + uid).split("0");
+                String[] t = ("" + uid).split("0", 2);
                 PhoneNumber phoneNumber = new PhoneNumber(t[0], t[1]);
                 u.number = phoneNumber.getNumber();
                 u.zone = phoneNumber.getZone();
