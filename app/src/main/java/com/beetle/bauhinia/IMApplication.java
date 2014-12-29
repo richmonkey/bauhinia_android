@@ -129,7 +129,7 @@ public class IMApplication extends Application implements Application.ActivityLi
     }
 
     private final static String TAG = "beetle";
-    private int resumed = 0;
+    private int started = 0;
     private int stopped = 0;
 
     public void onActivityCreated(Activity activity, Bundle bundle) {
@@ -146,26 +146,6 @@ public class IMApplication extends Application implements Application.ActivityLi
 
     public void onActivityResumed(Activity activity) {
         Log.i("","onActivityResumed:" + activity.getLocalClassName());
-        ++resumed;
-
-        if (resumed - stopped == 1 ) {
-            if (Token.getInstance().uid > 0 && isNetworkConnected(this)) {
-                if (stopped == 0) {
-                    Log.i(TAG, "app startup start imservice");
-                } else {
-                    Log.i(TAG, "app enter foreground start imservice");
-                }
-                IMService.getInstance().start();
-            }
-        }
-        if (resumed - stopped == 1) {
-            Log.i(TAG, "register network broadcast receiver");
-            registerBroadcastReceiver();
-
-            if (!TextUtils.isEmpty(Token.getInstance().refreshToken)) {
-                refreshToken();
-            }
-        }
     }
 
     public void onActivitySaveInstanceState(Activity activity,
@@ -175,12 +155,32 @@ public class IMApplication extends Application implements Application.ActivityLi
 
     public void onActivityStarted(Activity activity) {
         Log.i("","onActivityStarted:" + activity.getLocalClassName());
+        ++started;
+
+        if (started - stopped == 1 ) {
+            if (Token.getInstance().uid > 0 && isNetworkConnected(this)) {
+                if (stopped == 0) {
+                    Log.i(TAG, "app startup start imservice");
+                } else {
+                    Log.i(TAG, "app enter foreground start imservice");
+                }
+                IMService.getInstance().start();
+            }
+        }
+        if (started - stopped == 1) {
+            Log.i(TAG, "register network broadcast receiver");
+            registerBroadcastReceiver();
+
+            if (!TextUtils.isEmpty(Token.getInstance().refreshToken)) {
+                refreshToken();
+            }
+        }
     }
 
     public void onActivityStopped(Activity activity) {
         Log.i("","onActivityStopped:" + activity.getLocalClassName());
         ++stopped;
-        if (stopped == resumed) {
+        if (stopped == started) {
             Log.i(TAG, "app enter background stop imservice");
             IMService.getInstance().stop();
             Log.i(TAG, "unregister network broadcast receiver");
