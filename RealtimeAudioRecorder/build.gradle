@@ -5,7 +5,7 @@ android {
     buildToolsVersion "21.1.1"
 
     defaultConfig {
-        applicationId "bz.tsung.media.audio"
+        //applicationId "bz.tsung.media.audio"
         minSdkVersion 4
         targetSdkVersion 21
         versionCode 1
