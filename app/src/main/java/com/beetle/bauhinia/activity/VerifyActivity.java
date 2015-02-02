@@ -97,7 +97,7 @@ public class VerifyActivity extends AccountActivity implements TextView.OnEditor
                         UserDB.getInstance().addUser(u);
 
                         IMService im = IMService.getInstance();
-                        im.setUid(token.uid);
+                        im.setToken(token.accessToken);
                         im.start();
 
                         Intent intent = new Intent(VerifyActivity.this, MainActivity.class);

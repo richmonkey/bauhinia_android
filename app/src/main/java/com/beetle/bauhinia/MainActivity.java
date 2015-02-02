@@ -271,9 +271,6 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     public void onPeerInputting(long uid) {
 
     }
-    public void onOnlineState(long uid, boolean on) {
-
-    }
 
     public void onPeerMessage(IMMessage msg) {
         Log.i(TAG, "on peer message");

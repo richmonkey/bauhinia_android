@@ -367,9 +367,9 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         editText = (EditText)findViewById(R.id.text_message);
 
         titleView.setText(peer.name);
+        setSubtitle();
         setSupportActionBar(toolbar);
         IMService.getInstance().addObserver(this);
-        IMService.getInstance().subscribeState(peer.uid);
 
         audioUtil = new AudioUtil(this);
         audioUtil.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
@@ -518,7 +518,6 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         super.onDestroy();
         Log.i(TAG, "imactivity destory");
         IMService.getInstance().removeObserver(this);
-        IMService.getInstance().unsubscribeState(peerUID);
         AudioDownloader.getInstance().removeObserver(this);
         Outbox.getInstance().removeObserver(this);
         audioUtil.release();
@@ -597,16 +596,6 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             long start = uptimeMillis() + 10*1000;
             t.setTimer(start);
             t.resume();
-        }
-    }
-
-    public void onOnlineState(long uid, boolean on) {
-        if (uid == peerUID) {
-            if (on) {
-                setSubtitle("对方在线");
-            } else {
-                setSubtitle();
-            }
         }
     }
 

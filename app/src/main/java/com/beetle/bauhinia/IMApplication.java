@@ -10,6 +10,7 @@ import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -93,11 +94,14 @@ public class IMApplication extends Application implements Application.ActivityLi
         IMService im =  IMService.getInstance();
         im.setHost(Config.HOST);
         im.setPort(Config.PORT);
+        String androidID = Settings.Secure.getString(this.getContentResolver(),
+                Settings.Secure.ANDROID_ID);
+        im.setDeviceID(androidID);
         im.setPeerMessageHandler(PeerMessageHandler.getInstance());
 
         //already login
         if (Token.getInstance().uid > 0) {
-            im.setUid(Token.getInstance().uid);
+            im.setToken(Token.getInstance().accessToken);
 
         }
         initErrorHandler();
@@ -254,6 +258,9 @@ public class IMApplication extends Application implements Application.ActivityLi
         t.refreshToken = token.refreshToken;
         t.expireTimestamp = token.expireTimestamp;
         t.save();
+
+        IMService im = IMService.getInstance();
+        im.setToken(token.accessToken);
         Log.i(TAG, "token refreshed");
     }
 

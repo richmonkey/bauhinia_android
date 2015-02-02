@@ -14,8 +14,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-
-
+import android.provider.Settings.Secure;
 
 import static android.os.SystemClock.uptimeMillis;
 
@@ -37,6 +36,7 @@ public class IMService {
     private boolean stopped = true;
     private Timer connectTimer;
     private Timer heartbeatTimer;
+    private int pingTimestamp;
     private int connectFailCount = 0;
     private int seq = 0;
     private ConnectState connectState = ConnectState.STATE_UNCONNECTED;
@@ -46,12 +46,12 @@ public class IMService {
 
     private String host;
     private int port;
-    private long uid;
+    private String token;
+    private String deviceID;
 
     IMPeerMessageHandler peerMessageHandler;
     ArrayList<IMServiceObserver> observers = new ArrayList<IMServiceObserver>();
     HashMap<Integer, IMMessage> peerMessages = new HashMap<Integer, IMMessage>();
-    private HashMap<Long, Boolean> subs = new HashMap<Long, Boolean>();
 
     private byte[] data;
 
@@ -86,8 +86,11 @@ public class IMService {
     public void setPort(int port) {
         this.port = port;
     }
-    public void setUid(long uid) {
-        this.uid = uid;
+    public void setToken(String token) {
+        this.token = token;
+    }
+    public void setDeviceID(String deviceID) {
+        this.deviceID = deviceID;
     }
 
     public void setPeerMessageHandler(IMPeerMessageHandler handler) {
@@ -106,8 +109,8 @@ public class IMService {
     }
 
     public void start() {
-        if (this.uid == 0) {
-            throw new RuntimeException("NO UID PROVIDED");
+        if (this.token.length() == 0) {
+            throw new RuntimeException("NO TOKEN PROVIDED");
         }
 
         if (!this.stopped) {
@@ -143,37 +146,6 @@ public class IMService {
 
         peerMessages.put(new Integer(msg.seq), im);
         return true;
-    }
-
-    //订阅用户在线状态通知消息
-    public void subscribeState(long uid) {
-        Long n = new Long(uid);
-        if (!subs.containsKey(n)) {
-            MessageSubscribe sub = new MessageSubscribe();
-            sub.uids = new ArrayList<Long>();
-            sub.uids.add(n);
-            if (sendSubscribe(sub)) {
-                subs.put(n, new Boolean(false));
-            }
-        } else {
-            Boolean online = subs.get(n);
-            for (int i = 0; i < observers.size(); i++ ) {
-                IMServiceObserver ob = observers.get(i);
-                ob.onOnlineState(uid, online);
-            }
-        }
-    }
-
-    public void unsubscribeState(long uid) {
-        Long n = new Long(uid);
-        subs.remove(n);
-    }
-
-    private boolean sendSubscribe(MessageSubscribe sub) {
-        Message msg = new Message();
-        msg.cmd = Command.MSG_SUBSCRIBE_ONLINE_STATE;
-        msg.body = sub;
-        return sendMessage(msg);
     }
 
     private void close() {
@@ -280,7 +252,6 @@ public class IMService {
                     IMService.this.publishConnectState();
                     IMService.this.sendAuth();
                     IMService.this.tcp.startRead();
-                    subs.clear();
                 }
             }
         });
@@ -376,25 +347,16 @@ public class IMService {
 
     }
 
-    private void handleOnlineState(Message msg) {
-        MessageOnlineState state = (MessageOnlineState)msg.body;
-        boolean on = state.online != 0 ? true : false;
-
-        if (subs.containsKey(new Long(state.sender))) {
-            subs.put(new Long(state.sender), new Boolean(on));
-        }
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
-            ob.onOnlineState(state.sender, on);
-        }
-    }
-
     private void handleInputting(Message msg) {
         MessageInputing inputting = (MessageInputing)msg.body;
         for (int i = 0; i < observers.size(); i++ ) {
             IMServiceObserver ob = observers.get(i);
             ob.onPeerInputting(inputting.sender);
         }
+    }
+
+    private void handlePong(Message msg) {
+        this.pingTimestamp = 0;
     }
 
     private void handleMessage(Message msg) {
@@ -404,12 +366,12 @@ public class IMService {
             handleIMMessage(msg);
         } else if (msg.cmd == Command.MSG_ACK) {
             handleACK(msg);
-        } else if (msg.cmd == Command.MSG_ONLINE_STATE) {
-            handleOnlineState(msg);
         } else if (msg.cmd == Command.MSG_PEER_ACK) {
             handlePeerACK(msg);
         } else if (msg.cmd == Command.MSG_INPUTTING) {
             handleInputting(msg);
+        } else if (msg.cmd == Command.MSG_PONG) {
+            handlePong(msg);
         } else {
             Log.i(TAG, "unknown message cmd:"+msg.cmd);
         }
@@ -457,17 +419,32 @@ public class IMService {
     }
 
     private void sendAuth() {
+        final int PLATFORM_ANDROID = 2;
+
         Message msg = new Message();
-        msg.cmd = Command.MSG_AUTH;
-        msg.body = new Long(this.uid);
+        msg.cmd = Command.MSG_AUTH_TOKEN;
+        AuthenticationToken auth = new AuthenticationToken();
+        auth.platformID = PLATFORM_ANDROID;
+        auth.token = this.token;
+        auth.deviceID = this.deviceID;
+        msg.body = auth;
+
         sendMessage(msg);
     }
 
     private void sendHeartbeat() {
-        Log.i(TAG, "send heartbeat");
+        if (this.pingTimestamp > 0 && now() - this.pingTimestamp > 60) {
+            Log.i(TAG, "ping timeout");
+            handleClose();
+            return;
+        }
+        Log.i(TAG, "send ping");
         Message msg = new Message();
-        msg.cmd = Command.MSG_HEARTBEAT;
-        sendMessage(msg);
+        msg.cmd = Command.MSG_PING;
+        boolean r = sendMessage(msg);
+        if (r && this.pingTimestamp == 0) {
+            this.pingTimestamp = now();
+        }
     }
 
     private boolean sendMessage(Message msg) {
