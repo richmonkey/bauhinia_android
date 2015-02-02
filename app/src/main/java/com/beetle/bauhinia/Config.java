@@ -5,7 +5,7 @@ package com.beetle.bauhinia;
  */
 public class Config {
 
-    public static final String API_URL = "http://im.yufeng.me:5000";
+    public static final String API_URL = "http://im.yufeng.me";
     public static final String HOST = "im.yufeng.me";
     public static final int PORT = 23000;
 

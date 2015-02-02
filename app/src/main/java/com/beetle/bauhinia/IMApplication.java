@@ -13,6 +13,7 @@ import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
 
+import com.beetle.bauhinia.api.body.PostDeviceToken;
 import com.beetle.im.IMService;
 import com.beetle.bauhinia.api.IMHttp;
 import com.beetle.bauhinia.api.IMHttpFactory;
@@ -80,6 +81,7 @@ public class IMApplication extends Application implements Application.ActivityLi
                 deviceTokenStr = BinAscii.bin2Hex(tokenArray);
                 Log.i(TAG, "device token:" + deviceTokenStr);
                 IMApplication.this.deviceToken = deviceTokenStr;
+                IMApplication.this.bindDeviceToken(deviceTokenStr);
             }
         });
         // 注册服务，并启动服务
@@ -255,4 +257,23 @@ public class IMApplication extends Application implements Application.ActivityLi
         Log.i(TAG, "token refreshed");
     }
 
+    private void bindDeviceToken(String deviceToken) {
+        PostDeviceToken postToken = new PostDeviceToken();
+        postToken.deviceToken = deviceToken;
+        IMHttp imHttp = IMHttpFactory.Singleton();
+        imHttp.postDeviceToken(postToken)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<Object>() {
+                    @Override
+                    public void call(Object obj) {
+                        Log.i(TAG, "bind success");
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        Log.i(TAG, "bind fail");
+                    }
+                });
+
+    }
 }
