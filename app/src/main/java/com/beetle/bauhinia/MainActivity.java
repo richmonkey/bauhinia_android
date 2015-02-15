@@ -106,21 +106,23 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        super.onCreateOptionsMenu(menu);
-        MenuItem newItem=menu.add(0,0,0, "new");
-        newItem.setIcon(R.drawable.ic_new_conversation);
-        newItem.setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
-            @Override
-            public boolean onMenuItemClick(MenuItem item) {
-                Intent intent = new Intent(MainActivity.this, NewConversation.class);
-                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                startActivity(intent);
-                return true;
-            }
-        });
-        newItem.setShowAsAction(MenuItem.SHOW_AS_ACTION_IF_ROOM);
+        getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == R.id.action_new_conversation) {
+            Intent intent = new Intent(MainActivity.this, NewConversation.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+            return true;
+        }
+
+        return super.onOptionsItemSelected(item);
+    }
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
