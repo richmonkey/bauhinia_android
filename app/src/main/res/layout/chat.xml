@@ -65,7 +65,6 @@
 
         <EditText
             android:id="@+id/text_message"
-            android:visibility="gone"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginLeft="10dp"
@@ -79,6 +78,7 @@
 
         <bz.tsung.media.audio.AudioRecorder
             android:id="@+id/audio_recorder"
+            android:visibility="gone"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
