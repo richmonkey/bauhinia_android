@@ -6,4 +6,5 @@ package com.beetle.bauhinia.api.body;
 public class PostPhone {
     public String zone;
     public String number;
+    public String name;
 }

@@ -240,6 +240,11 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
                     PostPhone phone = new PostPhone();
                     phone.number = n.getNumber();
                     phone.zone = n.getZone();
+                    if (contact.displayName != null) {
+                        phone.name = contact.displayName;
+                    } else {
+                        phone.name = "";
+                    }
                     phoneList.add(phone);
                 }
             }
