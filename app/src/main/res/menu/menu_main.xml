@@ -7,4 +7,8 @@
         android:icon="@drawable/ic_new_conversation"
         app:showAsAction="ifRoom"
         />
+    <item android:id="@+id/action_qrcode"
+        android:title="网页登录"
+        app:showAsAction="ifRoom"
+        />
 </menu>

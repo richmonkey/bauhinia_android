@@ -9,6 +9,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+
+import com.beetle.bauhinia.activity.ZBarActivity;
+import com.beetle.bauhinia.api.body.PostDeviceToken;
+import com.beetle.bauhinia.api.body.PostQRCode;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
@@ -44,6 +48,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         ContactDB.ContactObserver, NotificationCenter.NotificationCenterObserver {
 
     private static final String SEND_MESSAGE_NAME = "send_message";
+
+    private static final int QRCODE_SCAN_REQUEST = 100;
 
     List<Conversation> conversations;
 
@@ -118,11 +124,46 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             return true;
+        } else if (id == R.id.action_qrcode) {
+            Intent intent = new Intent(MainActivity.this, ZBarActivity.class);
+            startActivityForResult(intent, QRCODE_SCAN_REQUEST);
+            return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        Log.i(TAG, "result:" + resultCode + " request:" + requestCode);
+
+        if (requestCode == QRCODE_SCAN_REQUEST && resultCode == RESULT_OK) {
+            String symbol = data.getStringExtra("symbol");
+            Log.i(TAG, "symbol:"+symbol);
+            if (TextUtils.isEmpty(symbol)) {
+                return;
+            }
+
+            PostQRCode qrcode = new PostQRCode();
+            qrcode.sid = symbol;
+            IMHttp imHttp = IMHttpFactory.Singleton();
+            imHttp.postQRCode(qrcode)
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(new Action1<Object>() {
+                        @Override
+                        public void call(Object obj) {
+                            Log.i(TAG, "sweep success");
+                            Toast.makeText(MainActivity.this, "登录成功", Toast.LENGTH_SHORT).show();
+                        }
+                    }, new Action1<Throwable>() {
+                        @Override
+                        public void call(Throwable throwable) {
+                            Log.i(TAG, "sweep fail");
+                            Toast.makeText(MainActivity.this, "登录失败", Toast.LENGTH_SHORT).show();
+                        }
+                    });
+
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

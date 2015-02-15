@@ -5,6 +5,7 @@ import com.beetle.bauhinia.api.body.PostAuthRefreshToken;
 import com.beetle.bauhinia.api.body.PostAuthToken;
 import com.beetle.bauhinia.api.body.PostDeviceToken;
 import com.beetle.bauhinia.api.body.PostPhone;
+import com.beetle.bauhinia.api.body.PostQRCode;
 import com.beetle.bauhinia.api.body.PostTextValue;
 import com.beetle.bauhinia.api.types.Audio;
 import com.beetle.bauhinia.api.types.Code;
@@ -39,6 +40,9 @@ public interface IMHttp {
 
     @POST("/auth/refresh_token")
     Observable<Token> postAuthRefreshToken(@Body PostAuthRefreshToken refreshToken);
+
+    @POST("/qrcode/sweep")
+    Observable<Object> postQRCode(@Body PostQRCode qrcode);
 
     @POST("/device/bind")
     Observable<Object> postDeviceToken(@Body PostDeviceToken token);
