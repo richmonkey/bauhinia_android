@@ -121,7 +121,6 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         int id = item.getItemId();
         if (id == R.id.action_new_conversation) {
             Intent intent = new Intent(MainActivity.this, NewConversation.class);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);
             return true;
         } else if (id == R.id.action_qrcode) {

@@ -52,8 +52,7 @@
         </activity>
         <activity
             android:name="com.beetle.bauhinia.NewConversation"
-            android:exported="true"
-            android:launchMode="singleTask" >
+            android:exported="true" >
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
             </intent-filter>
@@ -61,7 +60,6 @@
         <activity
             android:name="com.beetle.bauhinia.IMActivity"
             android:exported="true"
-            android:launchMode="singleTask"
             android:theme="@style/AppTheme.NoActionBar"
             >
             <intent-filter>
@@ -71,8 +69,7 @@
 
         <activity
             android:name="com.beetle.bauhinia.activity.ZBarActivity"
-            android:exported="true"
-            android:launchMode="singleTask" >
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
             </intent-filter>
