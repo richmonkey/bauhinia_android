@@ -87,7 +87,9 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             tv.setText(c.name);
 
             tv = (TextView)view.findViewById(R.id.content);
-            tv.setText(MessageFormatter.messageContentToString(c.message.content));
+            if (c.message != null) {
+                tv.setText(MessageFormatter.messageContentToString(c.message.content));
+            }
 
             if (c.avatar != null && c.avatar.length() > 0) {
                 ImageView imageView = (ImageView) view.findViewById(R.id.header);
@@ -280,6 +282,9 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             if (conv == null) {
                 break;
             }
+            if (conv.message == null) {
+                continue;
+            }
             User u = getUser(conv.cid);
             if (TextUtils.isEmpty(u.name)) {
                 conv.name = u.number;
@@ -296,6 +301,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
         if (c != null) {
             u.name = c.displayName;
+        } else {
+            u.name = u.number;
         }
         return u;
     }
