@@ -296,6 +296,13 @@ public class IMService {
     private void handleAuthStatus(Message msg) {
         Integer status = (Integer)msg.body;
         Log.d(TAG, "auth status:" + status);
+        if (status != 0) {
+            //失效的accesstoken,2s后重新连接
+            this.connectFailCount = 2;
+            this.connectState = ConnectState.STATE_UNCONNECTED;
+            this.publishConnectState();
+            this.close();
+        }
     }
 
     private void handleIMMessage(Message msg) {
