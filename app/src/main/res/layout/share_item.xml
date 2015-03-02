@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="120dp"
+    android:orientation="horizontal" >
+
+    <ImageView
+        android:id="@+id/header"
+        android:layout_width="80dp"
+        android:layout_height="80dp"
+        android:src="@drawable/ic_share"
+        android:layout_gravity="center_vertical"
+        android:paddingLeft="8dp" />
+
+    <TextView android:id="@+id/text"
+        android:textStyle="bold"
+        android:textSize="16dp"
+        android:text="将羊蹄甲推荐给朋友"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textIsSelectable="false"
+        android:layout_gravity="center_vertical"
+        android:padding="5dp"/>
+
+</LinearLayout>
+

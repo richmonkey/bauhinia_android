@@ -157,6 +157,15 @@ public class PeerMessageDB extends MessageDB {
         }
     }
 
+    public boolean clearCoversation(long uid) {
+        try {
+            File file = new File(this.dir, fileName(uid));
+            return file.delete();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public PeerMessageIterator newMessageIterator(long uid) {
         try {
             File file = new File(this.dir, fileName(uid));

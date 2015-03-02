@@ -121,7 +121,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_new_conversation) {
+        if (id == R.id.action_new_conversation || id == R.id.action_new_conversation2) {
             Intent intent = new Intent(MainActivity.this, NewConversation.class);
             startActivity(intent);
             return true;

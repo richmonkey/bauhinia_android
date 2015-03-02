@@ -6,12 +6,18 @@
     <item android:id="@+id/action_take"
         android:title="拍照"
         android:icon="@drawable/ic_take_photo"
-        app:showAsAction="always"
+        app:showAsAction="never"
         />
 
     <item android:id="@+id/action_photo"
         android:title="选照片"
         android:icon="@drawable/ic_pick_photo"
-        app:showAsAction="always"
+        app:showAsAction="never"
         />
+
+    <item android:id="@+id/action_clear"
+        android:title="清除对话"
+        app:showAsAction="never"
+        />
+
 </menu>

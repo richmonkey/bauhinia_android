@@ -1,7 +1,9 @@
 package com.beetle.bauhinia;
 
 import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -23,6 +25,8 @@ import butterknife.ButterKnife;
  * Created by houxh on 14-8-12.
  */
 public class NewConversation extends BaseActivity implements AdapterView.OnItemClickListener {
+    private final  static String TAG = "im";
+
     ArrayList<User> users;
 
     private ListView lv;
@@ -100,6 +104,9 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
 
         adapter = new ConversationAdapter();
         lv = (ListView)findViewById(R.id.list);
+
+        View footView  = getLayoutInflater().inflate(R.layout.share_item, null);
+        lv.addFooterView(footView);
         lv.setAdapter(adapter);
         lv.setOnItemClickListener(this);
     }
@@ -107,6 +114,14 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position,
                             long id) {
+
+        if (id == -1 && position == users.size()) {
+            Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("sms:"));
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra("sms_body", "羊蹄甲一款跨平台的通讯软件，快下载试试吧");
+            startActivity(intent);
+            return;
+        }
         User u = users.get(position);
 
         Intent intent = new Intent(this, IMActivity.class);

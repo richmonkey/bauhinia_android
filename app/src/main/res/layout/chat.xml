@@ -57,7 +57,7 @@
         >
         <Button
             android:id="@+id/button_switch"
-            android:layout_width="wrap_content"
+            android:layout_width="56dp"
             android:layout_height="wrap_content"
             android:layout_weight="0"
             android:text="切换"
@@ -87,12 +87,11 @@
 
         <Button
             android:id="@+id/btn_send"
-            android:layout_width="wrap_content"
+            android:layout_width="56dp"
             android:layout_height="wrap_content"
             android:text="发送"
             android:onClick="onSend"
-            android:layout_weight="0"
-            />
+            android:layout_weight="0" />
     </LinearLayout>
 </LinearLayout>
 

@@ -408,6 +408,12 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         } else if(id == R.id.action_take) {
             takePicture();
             return true;
+        } else if (id == R.id.action_clear) {
+            PeerMessageDB db = PeerMessageDB.getInstance();
+            db.clearCoversation(this.peerUID);
+            messages = new ArrayList<IMessage>();
+            adapter.notifyDataSetChanged();
+            return true;
         }
         return super.onOptionsItemSelected(item);
     }
