@@ -118,7 +118,8 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
         if (id == -1 && position == users.size()) {
             Intent intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("sms:"));
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.putExtra("sms_body", "羊蹄甲一款跨平台的通讯软件，快下载试试吧");
+            String body = String.format("我正在使用“羊蹄甲”。 %s 可以给您的联系人发送消息，分享图片和音频。", Config.DOWNLOAD_URL);
+            intent.putExtra("sms_body", body);
             startActivity(intent);
             return;
         }
