@@ -534,9 +534,15 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         if (audioRecorder.getVisibility() == View.VISIBLE) {
             audioRecorder.setVisibility(View.GONE);
             editText.setVisibility(View.VISIBLE);
+            editText.requestFocus();
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT);
         } else {
             audioRecorder.setVisibility(View.VISIBLE);
             editText.setVisibility(View.GONE);
+            editText.clearFocus();
+            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(editText.getWindowToken(), 0);
         }
     }
 
