@@ -1,1 +1,1 @@
-include ':app', ':RealtimeAudioRecorder'
+include ':app', ':RealtimeAudioRecorder', ':imsdk'
