@@ -18,6 +18,12 @@ public class ReverseFile {
         this.pos = this.file.length();
     }
 
+    public ReverseFile(RandomAccessFile file, long position) throws IOException {
+        this.file = file;
+        this.fileChan = file.getChannel();
+        this.pos = position;
+    }
+
     public long getFilePointer() {
         return pos;
     }

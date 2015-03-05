@@ -8,6 +8,7 @@ import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.*;
 import android.provider.MediaStore;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
 import android.view.Menu;
@@ -65,9 +66,12 @@ import static com.beetle.bauhinia.constant.RequestCodes.*;
 
 
 public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener,
-        AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver, Outbox.OutboxObserver {
+        AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver, Outbox.OutboxObserver, SwipeRefreshLayout.OnRefreshListener {
     private static final String SEND_MESSAGE_NAME = "send_message";
     private final String TAG = "imservice";
+
+    private final int PAGE_SIZE = 10;
+
 
     private long currentUID;
 
@@ -353,14 +357,21 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         }
         messages = new ArrayList<IMessage>();
 
+        int count = 0;
         PeerMessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID);
-        while (true && iter != null) {
+        while (iter != null) {
             IMessage msg = iter.next();
             if (msg == null) {
                 break;
             }
             messages.add(0, msg);
+            if (++count >= PAGE_SIZE) {
+                break;
+            }
         }
+
+        SwipeRefreshLayout swipeLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_container);
+        swipeLayout.setOnRefreshListener(this);
 
         adapter = new ChatAdapter();
         listview.setAdapter(adapter);
@@ -418,6 +429,32 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         return super.onOptionsItemSelected(item);
     }
 
+    public void onRefresh() {
+        final SwipeRefreshLayout swipeLayout = (SwipeRefreshLayout)findViewById(R.id.swipe_container);
+        swipeLayout.setRefreshing(false);
+
+        if (messages.size() == 0) {
+            return;
+        }
+
+        IMessage firsMsg = messages.get(0);
+        int count = 0;
+        PeerMessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID, firsMsg.msgLocalID);
+        while (iter != null) {
+            IMessage msg = iter.next();
+            if (msg == null) {
+                break;
+            }
+            messages.add(0, msg);
+            if (++count >= PAGE_SIZE) {
+                break;
+            }
+        }
+        if (count > 0) {
+            adapter.notifyDataSetChanged();
+            listview.setSelection(count);
+        }
+    }
 
     private User loadUser(long uid) {
         User u = UserDB.getInstance().loadUser(uid);
@@ -537,6 +574,9 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             editText.requestFocus();
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT);
+            if (messages.size() > 0) {
+                listview.setSelection(messages.size());
+            }
         } else {
             audioRecorder.setVisibility(View.VISIBLE);
             editText.setVisibility(View.GONE);

@@ -62,8 +62,6 @@ class PeerConversationIterator implements ConversationIterator{
 }
 
 class PeerMessageIterator {
-
-    private RandomAccessFile file;
     private ReverseFile revFile;
 
     public PeerMessageIterator(RandomAccessFile f) throws IOException {
@@ -71,8 +69,15 @@ class PeerMessageIterator {
             Log.i("imservice", "check header fail");
             return;
         }
-        this.file = f;
         this.revFile = new ReverseFile(f);
+    }
+
+    public PeerMessageIterator(RandomAccessFile f, int lastMsgID) throws IOException {
+        if (!MessageDB.checkHeader(f)) {
+            Log.i("imservice", "check header fail");
+            return;
+        }
+        this.revFile = new ReverseFile(f, lastMsgID);
     }
 
     public IMessage next() {
@@ -171,6 +176,17 @@ public class PeerMessageDB extends MessageDB {
             File file = new File(this.dir, fileName(uid));
             RandomAccessFile f = new RandomAccessFile(file, "r");
             return new PeerMessageIterator(f);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public PeerMessageIterator newMessageIterator(long uid, int firstMsgID) {
+        try {
+            File file = new File(this.dir, fileName(uid));
+            RandomAccessFile f = new RandomAccessFile(file, "r");
+            return new PeerMessageIterator(f, firstMsgID);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
