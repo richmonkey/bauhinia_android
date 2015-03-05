@@ -300,34 +300,32 @@ public class AudioRecorder extends Button implements OnTouchListener, IAudioReco
 			return false;
 		}
 		start = false;
-		Date now = new Date();
-		if (now.getTime() - mBegin.getTime() < 1000) {
-			mBegin = null;
-			Toast.makeText(mContext, "录音时间太短了", 5000).show();
-			(new File(tfile)).delete();
-			// mInsideRecordListener.onRecordFail(null);
-			audioRecorderListener.onRecordFail();
-			mInsideRecordListener.onStreamEnd();
-			return false;
-		}
 		if (tfile != null) {
 			try {
 				Date end = new Date();
 				long fileTime = 0;
-				try {
-					fileTime = AudioUtil.getAudioDuration(tfile);
-				} catch (IOException e) {
-					e.printStackTrace();
-				}
+				fileTime = AudioUtil.getAudioDuration(tfile);
 				long duration = fileTime == 0 ? end.getTime()
 						- mBegin.getTime() : fileTime;
+
+                if (duration < 1000) {
+                    mBegin = null;
+                    Toast.makeText(mContext, "录音时间太短了", 5000).show();
+                    (new File(tfile)).delete();
+                    // mInsideRecordListener.onRecordFail(null);
+                    audioRecorderListener.onRecordFail();
+                    mInsideRecordListener.onStreamEnd();
+                    return false;
+                }
 				// mInsideRecordListener.onRecordComplete(tfile, duration);
 				audioRecorderListener.onRecordComplete(tfile, duration);
 				mInsideRecordListener.onStreamEnd();
 				mBegin = null;
 			} catch (IllegalStateException e) {
 				e.printStackTrace();
-			}
+			} catch (IOException e) {
+                e.printStackTrace();
+            }
 		}
 		return false;
 	}
