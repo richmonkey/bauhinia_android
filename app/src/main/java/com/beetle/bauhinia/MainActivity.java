@@ -1,6 +1,11 @@
 package com.beetle.bauhinia;
 
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.util.Log;
@@ -13,6 +18,7 @@ import android.widget.*;
 import com.beetle.bauhinia.activity.ZBarActivity;
 import com.beetle.bauhinia.api.body.PostDeviceToken;
 import com.beetle.bauhinia.api.body.PostQRCode;
+import com.beetle.bauhinia.api.types.Version;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
@@ -192,6 +198,52 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         this.refreshTimer.resume();
         NotificationCenter nc = NotificationCenter.defaultCenter();
         nc.addObserver(this, SEND_MESSAGE_NAME);
+
+        IMHttp imHttp = IMHttpFactory.Singleton();
+        imHttp.getLatestVersion()
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<Version>() {
+                    @Override
+                    public void call(Version obj) {
+                        MainActivity.this.checkVersion(obj);
+                    }
+                }, new Action1<Throwable>() {
+                    @Override
+                    public void call(Throwable throwable) {
+                        Log.i(TAG, "get latest version fail:" + throwable.getMessage());
+                    }
+                });
+    }
+
+    private void checkVersion(final Version version) {
+        Log.i(TAG, "latest version:" + version.major + ":" + version.minor + " url:" + version.url);
+        int versionCode = version.major*10+version.minor;
+        PackageManager pm = this.getPackageManager();
+        try {
+            PackageInfo info = pm.getPackageInfo(getPackageName(), 0);
+            if (versionCode > info.versionCode) {
+                AlertDialog.Builder builder = new AlertDialog.Builder(this);
+                builder.setMessage("是否更新羊蹄甲?");
+                builder.setTitle("提示");
+                builder.setPositiveButton("确认", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                        Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(version.url));
+                        startActivity(browserIntent);
+                    }
+                });
+                builder.setNegativeButton("取消", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        dialog.dismiss();
+                    }
+                });
+                builder.create().show();
+            }
+        } catch (PackageManager.NameNotFoundException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
