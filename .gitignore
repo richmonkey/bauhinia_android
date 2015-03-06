@@ -4,6 +4,7 @@
 .DS_Store
 /build
 /imsdk/build
+/imkit/build
 /.idea
 *.iml
 /gen

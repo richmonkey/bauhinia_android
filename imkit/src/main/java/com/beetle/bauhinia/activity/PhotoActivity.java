@@ -3,21 +3,20 @@ package com.beetle.bauhinia.activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.widget.ImageView;
 
-import com.beetle.bauhinia.R;
+import com.beetle.imkit.R;
 import com.squareup.picasso.Picasso;
 
 import butterknife.ButterKnife;
-import butterknife.InjectView;
 
 
 public class PhotoActivity extends BaseActivity {
     static final String EXTRA_URL = "im.url";
 
-    @InjectView(R.id.photo)
     ImageView photo;
 
     public static Intent newIntent(Context context, String url) {
@@ -34,7 +33,8 @@ public class PhotoActivity extends BaseActivity {
         try {
             getActionBar().hide();
         } catch (Exception ignored) {}
-        ButterKnife.inject(this);
+
+        photo = (ImageView)findViewById(R.id.photo);
         Picasso.with(this)
                 .load(getIntent().getStringExtra(EXTRA_URL))
                 .fit()

@@ -1,8 +1,7 @@
 package com.beetle.bauhinia.tools;
 
 import com.beetle.bauhinia.IMessage;
-import com.beetle.bauhinia.api.IMHttp;
-import com.beetle.bauhinia.api.IMHttpFactory;
+import com.beetle.bauhinia.api.IMHttpAPI;
 import com.beetle.bauhinia.api.types.Audio;
 import com.beetle.bauhinia.api.types.Image;
 
@@ -67,7 +66,7 @@ public class Outbox {
         messages.add(msg);
         String type = ImageMIME.getMimeType(file);
         TypedFile typedFile = new TypedFile(type, file);
-        IMHttp imHttp = IMHttpFactory.Singleton();
+        IMHttpAPI.IMHttp imHttp = IMHttpAPI.Singleton();
         imHttp.postImages(type// + "; charset=binary"
                 , typedFile)
                 .observeOn(AndroidSchedulers.mainThread())
@@ -91,7 +90,7 @@ public class Outbox {
         messages.add(msg);
         String type = "audio/amr";
         TypedFile typedFile = new TypedFile(type, new File(file));
-        IMHttp imHttp = IMHttpFactory.Singleton();
+        IMHttpAPI.IMHttp imHttp = IMHttpAPI.Singleton();
         imHttp.postAudios(type, typedFile)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<Audio>() {

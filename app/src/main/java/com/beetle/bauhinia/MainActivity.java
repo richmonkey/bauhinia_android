@@ -16,7 +16,6 @@ import android.view.ViewGroup;
 import android.widget.*;
 
 import com.beetle.bauhinia.activity.ZBarActivity;
-import com.beetle.bauhinia.api.body.PostDeviceToken;
 import com.beetle.bauhinia.api.body.PostQRCode;
 import com.beetle.bauhinia.api.types.Version;
 import com.beetle.im.IMMessage;
@@ -365,9 +364,14 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         Conversation conv = conversations.get(position);
         Log.i(TAG, "conv:" + conv.name);
 
+        User user = getUser(conv.cid);
+
         Intent intent = new Intent(this, IMActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("peer_uid", conv.cid);
+        intent.putExtra("peer_name", conv.name);
+        intent.putExtra("peer_up_timestamp", user.up_timestamp);
+        intent.putExtra("current_uid", Token.getInstance().uid);
         startActivity(intent);
     }
 

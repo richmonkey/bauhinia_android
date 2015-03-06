@@ -51,12 +51,6 @@ public interface IMHttp {
     @POST("/device/bind")
     Observable<Object> postDeviceToken(@Body PostDeviceToken token);
 
-    @POST("/images")
-    Observable<Image> postImages(@Header("Content-Type") String contentType, @Body TypedFile file);
-
-    @POST("/audios")
-    Observable<Audio> postAudios(@Header("Content-Type") String contentType, @Body TypedFile file);
-
     @Multipart
     @PUT("/users/me/avatar")
     Observable<Image> putUsersMeAvatar(@Part("file") TypedFile file);

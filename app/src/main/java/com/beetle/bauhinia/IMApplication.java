@@ -20,6 +20,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.beetle.bauhinia.api.IMHttpAPI;
 import com.beetle.bauhinia.api.body.PostDeviceToken;
 import com.beetle.bauhinia.api.types.Version;
 import com.beetle.im.IMService;
@@ -111,11 +112,9 @@ public class IMApplication extends Application implements Application.ActivityLi
         //already login
         if (Token.getInstance().uid > 0) {
             im.setToken(Token.getInstance().accessToken);
-
+            IMHttpAPI.setToken(Token.getInstance().accessToken);
         }
         initErrorHandler();
-
-
     }
 
 
@@ -273,6 +272,7 @@ public class IMApplication extends Application implements Application.ActivityLi
 
         IMService im = IMService.getInstance();
         im.setToken(token.accessToken);
+        IMHttpAPI.setToken(token.accessToken);
         Log.i(TAG, "token refreshed");
     }
 

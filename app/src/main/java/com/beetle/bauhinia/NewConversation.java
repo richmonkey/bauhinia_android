@@ -128,6 +128,9 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
         Intent intent = new Intent(this, IMActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("peer_uid", u.uid);
+        intent.putExtra("peer_name", u.name);
+        intent.putExtra("peer_up_timestamp", u.up_timestamp);
+        intent.putExtra("current_uid", Token.getInstance().uid);
         startActivity(intent);
 
         finish();

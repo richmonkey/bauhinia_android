@@ -17,18 +17,15 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
+
+import com.beetle.bauhinia.formatter.MessageFormatter;
 import com.beetle.im.*;
 import com.beetle.bauhinia.activity.BaseActivity;
 import com.beetle.bauhinia.activity.PhotoActivity;
 
 import com.beetle.bauhinia.constant.MessageKeys;
 
-import com.beetle.bauhinia.formatter.MessageFormatter;
-import com.beetle.bauhinia.model.Contact;
-import com.beetle.bauhinia.model.ContactDB;
-import com.beetle.bauhinia.model.PhoneNumber;
-import com.beetle.bauhinia.api.types.User;
-import com.beetle.bauhinia.model.UserDB;
+
 import com.beetle.bauhinia.tools.AudioDownloader;
 import com.beetle.bauhinia.tools.FileCache;
 import com.beetle.bauhinia.tools.Notification;
@@ -60,6 +57,7 @@ import bz.tsung.media.audio.AudioRecorder;
 import bz.tsung.media.audio.AudioUtil;
 import bz.tsung.media.audio.converters.AmrWaveConverter;
 
+import com.beetle.imkit.R;
 
 import static android.os.SystemClock.uptimeMillis;
 import static com.beetle.bauhinia.constant.RequestCodes.*;
@@ -76,7 +74,8 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     private long currentUID;
 
     private long peerUID;
-    private User peer;
+    private String peerName;
+    private long peerUpTimestamp;
 
     private ArrayList<IMessage> messages;
 
@@ -162,17 +161,13 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         public static int TEXT = 8;
     }
 
-    @InjectView(android.R.id.list)
     ListView listview;
-    @InjectView(R.id.audio_recorder)
     AudioRecorder audioRecorder;
+
     AudioUtil audioUtil;
 
-    @InjectView(R.id.title)
     TextView titleView;
-    @InjectView(R.id.subtitle)
     TextView subtitleView;
-    @InjectView(R.id.support_toolbar)
     Toolbar toolbar;
 
 
@@ -237,16 +232,16 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             }
         }
 
-        class AudioHolder extends ViewHolder {
-            @InjectView(R.id.play_control)
+        class AudioHolder  {
             ImageView control;
-            @InjectView(R.id.progress)
             ProgressBar progress;
-            @InjectView(R.id.duration)
+            //@InjectView(R.id.duration)
             TextView duration;
 
             AudioHolder(View view) {
-                super(view);
+                control = (ImageView)view.findViewById(R.id.play_control);
+                progress = (ProgressBar)view.findViewById(R.id.progress);
+                duration = (TextView)view.findViewById(R.id.duration);
             }
         }
 
@@ -341,20 +336,35 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.chat);
-        ButterKnife.inject(this);
 
-        this.currentUID = Token.getInstance().uid;
+        listview = (ListView)findViewById(R.id.list_view);
+        audioRecorder = (AudioRecorder)findViewById(R.id.audio_recorder);
+        titleView = (TextView)findViewById(R.id.title);
+        subtitleView = (TextView)findViewById(R.id.subtitle);
+        toolbar = (Toolbar)findViewById(R.id.support_toolbar);
+
+        listview.setOnItemClickListener(this);
+
         Intent intent = getIntent();
+
+        currentUID = intent.getLongExtra("current_uid", 0);
+        if (currentUID == 0) {
+            Log.e(TAG, "current uid is 0");
+            return;
+        }
         peerUID = intent.getLongExtra("peer_uid", 0);
         if (peerUID == 0) {
             Log.e(TAG, "peer uid is 0");
             return;
         }
-        peer = loadUser(peerUID);
-        if (peer == null) {
-            Log.e(TAG, "load user fail");
+        peerName = intent.getStringExtra("peer_name");
+        if (peerName == null) {
+            Log.e(TAG, "peer name is null");
             return;
         }
+
+        peerUpTimestamp = intent.getLongExtra("peer_up_timestamp", 0);
+
         messages = new ArrayList<IMessage>();
 
         int count = 0;
@@ -377,7 +387,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         listview.setAdapter(adapter);
         editText = (EditText)findViewById(R.id.text_message);
 
-        titleView.setText(peer.name);
+        titleView.setText(peerName);
         setSubtitle();
         setSupportActionBar(toolbar);
         IMService.getInstance().addObserver(this);
@@ -456,20 +466,6 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         }
     }
 
-    private User loadUser(long uid) {
-        User u = UserDB.getInstance().loadUser(uid);
-        if (u == null) {
-            return null;
-        }
-        Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
-        if (c == null) {
-            u.name = u.number;
-        } else {
-            u.name = c.displayName;
-        }
-        return u;
-    }
-
     private boolean IsSameDay(Calendar c1, Calendar c2) {
         int year = c1.get(Calendar.YEAR);
         int month = c1.get(Calendar.MONTH);
@@ -504,7 +500,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
     private String getLastOnlineTimestamp() {
         Calendar lastDate = Calendar.getInstance();
-        lastDate.setTime(new Date(this.peer.up_timestamp*1000));
+        lastDate.setTime(new Date(peerUpTimestamp*1000));
         Calendar todayDate = Calendar.getInstance();
 
         int year = lastDate.get(Calendar.YEAR);
@@ -539,7 +535,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         } else if (state == IMService.ConnectState.STATE_CONNECTFAIL ||
                 state == IMService.ConnectState.STATE_UNCONNECTED) {
             setSubtitle("未连接");
-        } else if (this.peer.up_timestamp > 0) {
+        } else if (peerUpTimestamp > 0) {
             String s = getLastOnlineTimestamp();
             setSubtitle(s);
         } else {
@@ -566,8 +562,8 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         audioUtil.release();
     }
 
-    @OnClick(R.id.button_switch)
-    void switchButtons() {
+    //@OnClick(R.id.button_switch)
+    public void switchButtons(View view) {
         if (audioRecorder.getVisibility() == View.VISIBLE) {
             audioRecorder.setVisibility(View.GONE);
             editText.setVisibility(View.VISIBLE);
@@ -848,7 +844,6 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         }
     }
 
-    @OnItemClick(android.R.id.list)
     void onItemClick(int position) {
         final IMessage message = messages.get(position);
         if (message.content instanceof IMessage.Audio) {

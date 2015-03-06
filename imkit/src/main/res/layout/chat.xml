@@ -45,7 +45,7 @@
         android:layout_weight="1">
 
         <ListView
-            android:id="@android:id/list"
+            android:id="@+id/list_view"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:divider="@null"
@@ -70,6 +70,7 @@
             android:layout_height="wrap_content"
             android:layout_weight="0"
             android:text="切换"
+            android:onClick="switchButton"
             />
 
         <EditText

@@ -5,7 +5,7 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
 import android.view.MenuItem;
 
-import com.beetle.bauhinia.R;
+import com.beetle.imkit.R;
 
 /**
  * Created by tsung on 12/10/14.
