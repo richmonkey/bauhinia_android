@@ -562,8 +562,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         audioUtil.release();
     }
 
-    //@OnClick(R.id.button_switch)
-    public void switchButtons(View view) {
+    public void switchButton(View view) {
         if (audioRecorder.getVisibility() == View.VISIBLE) {
             audioRecorder.setVisibility(View.GONE);
             editText.setVisibility(View.VISIBLE);
