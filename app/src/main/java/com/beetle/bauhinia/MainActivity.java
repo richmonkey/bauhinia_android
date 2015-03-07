@@ -52,8 +52,6 @@ import rx.functions.Action1;
 public class MainActivity extends BaseActivity implements IMServiceObserver, AdapterView.OnItemClickListener,
         ContactDB.ContactObserver, NotificationCenter.NotificationCenterObserver {
 
-    private static final String SEND_MESSAGE_NAME = "send_message";
-
     private static final int QRCODE_SCAN_REQUEST = 100;
 
     List<Conversation> conversations;
@@ -196,7 +194,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         this.refreshTimer.setTimer(1000*1, 1000*3600);
         this.refreshTimer.resume();
         NotificationCenter nc = NotificationCenter.defaultCenter();
-        nc.addObserver(this, SEND_MESSAGE_NAME);
+        nc.addObserver(this, IMActivity.SEND_MESSAGE_NAME);
+        nc.addObserver(this, IMActivity.CLEAR_MESSAGES);
 
         IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.getLatestVersion()
@@ -430,26 +429,44 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     @Override
     public void onNotification(Notification notification) {
-        IMessage imsg = (IMessage)notification.obj;
-        Conversation conversation = null;
-        for (int i = 0; i < conversations.size(); i++) {
-            Conversation conv = conversations.get(i);
-            if (conv.cid == imsg.receiver) {
-                conversation = conv;
-                break;
+        if (notification.name.equals(IMActivity.SEND_MESSAGE_NAME)) {
+            IMessage imsg = (IMessage) notification.obj;
+            Conversation conversation = null;
+            for (int i = 0; i < conversations.size(); i++) {
+                Conversation conv = conversations.get(i);
+                if (conv.cid == imsg.receiver) {
+                    conversation = conv;
+                    break;
+                }
+            }
+
+            if (conversation == null) {
+                conversation = new Conversation();
+                conversation.cid = imsg.receiver;
+                User u = getUser(imsg.receiver);
+                conversation.name = u.name;
+                conversation.avatar = u.avatar;
+                conversations.add(conversation);
+            }
+            conversation.message = imsg;
+            adapter.notifyDataSetChanged();
+        } else if (notification.name.equals(IMActivity.CLEAR_MESSAGES)) {
+            Long peerUID = (Long)notification.obj;
+
+            int index = -1;
+            for (int i = 0; i < conversations.size(); i++) {
+                Conversation conv = conversations.get(i);
+                if (conv.cid == peerUID) {
+                    index = i;
+                    break;
+                }
+            }
+
+            if (index != -1) {
+                conversations.remove(index);
+                adapter.notifyDataSetChanged();
             }
         }
-
-        if (conversation == null) {
-            conversation = new Conversation();
-            conversation.cid = imsg.receiver;
-            User u = getUser(imsg.receiver);
-            conversation.name = u.name;
-            conversation.avatar = u.avatar;
-            conversations.add(conversation);
-        }
-        conversation.message = imsg;
-        adapter.notifyDataSetChanged();
     }
 
     public boolean canBack() {

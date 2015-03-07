@@ -65,7 +65,8 @@ import static com.beetle.bauhinia.constant.RequestCodes.*;
 
 public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener,
         AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver, Outbox.OutboxObserver, SwipeRefreshLayout.OnRefreshListener {
-    private static final String SEND_MESSAGE_NAME = "send_message";
+    public static final String SEND_MESSAGE_NAME = "send_message";
+    public static final String CLEAR_MESSAGES = "clear_messages";
     private final String TAG = "imservice";
 
     private final int PAGE_SIZE = 10;
@@ -434,6 +435,10 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             db.clearCoversation(this.peerUID);
             messages = new ArrayList<IMessage>();
             adapter.notifyDataSetChanged();
+
+            NotificationCenter nc = NotificationCenter.defaultCenter();
+            Notification notification = new Notification(this.peerUID, CLEAR_MESSAGES);
+            nc.postNotification(notification);
             return true;
         }
         return super.onOptionsItemSelected(item);
