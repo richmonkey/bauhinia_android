@@ -1,1 +1,1 @@
-include ':app', ':RealtimeAudioRecorder', ':imsdk', ':imkit'
+include ':app',  ':imsdk', ':imkit'

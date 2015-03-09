@@ -11,7 +11,6 @@ import android.widget.ImageView;
 import com.beetle.imkit.R;
 import com.squareup.picasso.Picasso;
 
-import butterknife.ButterKnife;
 
 
 public class PhotoActivity extends BaseActivity {

@@ -1,5 +1,7 @@
 package com.beetle.bauhinia;
 
+import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -11,8 +13,10 @@ import android.provider.MediaStore;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.Toolbar;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
@@ -31,6 +35,7 @@ import com.beetle.bauhinia.tools.FileCache;
 import com.beetle.bauhinia.tools.Notification;
 import com.beetle.bauhinia.tools.NotificationCenter;
 import com.beetle.bauhinia.tools.Outbox;
+import com.beetle.im.Timer;
 import com.google.gson.JsonObject;
 import com.squareup.picasso.Picasso;
 
@@ -44,18 +49,8 @@ import java.io.FileInputStream;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.UUID;
+import java.util.*;
 
-import butterknife.ButterKnife;
-import butterknife.InjectView;
-import butterknife.OnClick;
-import butterknife.OnItemClick;
-import bz.tsung.media.audio.AudioRecorder;
-import bz.tsung.media.audio.AudioUtil;
-import bz.tsung.media.audio.converters.AmrWaveConverter;
 
 import com.beetle.imkit.R;
 
@@ -63,13 +58,17 @@ import static android.os.SystemClock.uptimeMillis;
 import static com.beetle.bauhinia.constant.RequestCodes.*;
 
 
-public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys, AudioRecorder.IAudioRecorderListener,
-        AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver, Outbox.OutboxObserver, SwipeRefreshLayout.OnRefreshListener {
+public class IMActivity extends BaseActivity implements IMServiceObserver, MessageKeys,
+        AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver,
+        Outbox.OutboxObserver, SwipeRefreshLayout.OnRefreshListener {
     public static final String SEND_MESSAGE_NAME = "send_message";
     public static final String CLEAR_MESSAGES = "clear_messages";
     private final String TAG = "imservice";
 
     private final int PAGE_SIZE = 10;
+
+    private static final int IN_MSG = 0;
+    private static final int OUT_MSG = 1;
 
 
     private long currentUID;
@@ -80,63 +79,29 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
     private ArrayList<IMessage> messages;
 
-    private static final int IN_MSG = 0;
-    private static final int OUT_MSG = 1;
 
     private EditText editText;
 
     BaseAdapter adapter;
 
-    @Override
-    public void onRecordFail() {
+    IMessage playingMessage;
 
-    }
+    //录音相关
+    private Handler mHandler = new Handler();
+    private java.util.Timer sixtySecondsTimer;
+    private java.util.Timer recordingTimer;
+    private AlertDialog alertDialog;
 
-    @Override
-    public void onRecordComplete(String file, final long mduration) {
-        long duration = mduration/1000;
+    private ImageView recordingImageBG;
 
-        JsonObject content = new JsonObject();
-        JsonObject audioJson = new JsonObject();
-        audioJson.addProperty("duration", duration);
-        audioJson.addProperty("url", localAudioURL());
-        content.add(AUDIO, audioJson);
+    private ImageView recordingImage;
 
-        IMessage imsg = new IMessage();
-        imsg.sender = this.currentUID;
-        imsg.receiver = peerUID;
-        imsg.setContent(content.toString());
-        imsg.timestamp = now();
-        PeerMessageDB.getInstance().insertMessage(imsg, peerUID);
+    private TextView recordingText;
 
-        Log.i(TAG, "msg local id:" + imsg.msgLocalID);
+    private Date mBegin;
 
+    private String recordFileName;
 
-        messages.add(imsg);
-
-        adapter.notifyDataSetChanged();
-        listview.smoothScrollToPosition(messages.size()-1);
-
-        Outbox ob = Outbox.getInstance();
-        try {
-            IMessage.Audio audio = (IMessage.Audio)imsg.content;
-            FileInputStream is = new FileInputStream(new File(file));
-            Log.i(TAG, "store audio url:" + audio.url);
-            FileCache.getInstance().storeFile(audio.url, is);
-            ob.uploadAudio(imsg, FileCache.getInstance().getCachedFilePath(audio.url));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        NotificationCenter nc = NotificationCenter.defaultCenter();
-        Notification notification = new Notification(imsg, SEND_MESSAGE_NAME);
-        nc.postNotification(notification);
-    }
-
-    @Override
-    public void onRecordConvertedBuffer(byte[] buffer) {
-
-    }
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -154,6 +119,60 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     }
 
 
+    private void sendAudioMessage() {
+        String tfile = audioRecorder.getPathName();
+
+        try {
+            long mduration = AudioUtil.getAudioDuration(tfile);
+
+            if (mduration < 1000) {
+                Toast.makeText(this, "录音时间太短了", 5000).show();
+                return;
+            }
+            long duration = mduration/1000;
+
+            JsonObject content = new JsonObject();
+            JsonObject audioJson = new JsonObject();
+            audioJson.addProperty("duration", duration);
+            audioJson.addProperty("url", localAudioURL());
+            content.add(AUDIO, audioJson);
+
+            IMessage imsg = new IMessage();
+            imsg.sender = this.currentUID;
+            imsg.receiver = peerUID;
+            imsg.setContent(content.toString());
+            imsg.timestamp = now();
+            PeerMessageDB.getInstance().insertMessage(imsg, peerUID);
+
+            Log.i(TAG, "msg local id:" + imsg.msgLocalID);
+
+
+            messages.add(imsg);
+
+            adapter.notifyDataSetChanged();
+            listview.smoothScrollToPosition(messages.size()-1);
+
+            Outbox ob = Outbox.getInstance();
+
+            IMessage.Audio audio = (IMessage.Audio)imsg.content;
+            FileInputStream is = new FileInputStream(new File(tfile));
+            Log.i(TAG, "store audio url:" + audio.url);
+            FileCache.getInstance().storeFile(audio.url, is);
+            ob.uploadAudio(imsg, FileCache.getInstance().getCachedFilePath(audio.url));
+
+            NotificationCenter nc = NotificationCenter.defaultCenter();
+            Notification notification = new Notification(imsg, SEND_MESSAGE_NAME);
+            nc.postNotification(notification);
+
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+    }
+
     static interface ContentTypes {
         public static int UNKNOWN = 0;
         public static int AUDIO = 2;
@@ -164,13 +183,12 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
     ListView listview;
     AudioRecorder audioRecorder;
-
     AudioUtil audioUtil;
 
     TextView titleView;
     TextView subtitleView;
     Toolbar toolbar;
-
+    Button recordButton;
 
     class ChatAdapter extends BaseAdapter implements ContentTypes {
         @Override
@@ -194,8 +212,6 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             } else {
                 basic = IN_MSG;
             }
-
-
             return getMediaType(position) + basic;
         }
 
@@ -227,16 +243,9 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
             return 10;
         }
 
-        private class ViewHolder {
-            ViewHolder(View view) {
-                ButterKnife.inject(this, view);
-            }
-        }
-
         class AudioHolder  {
             ImageView control;
             ProgressBar progress;
-            //@InjectView(R.id.duration)
             TextView duration;
 
             AudioHolder(View view) {
@@ -258,7 +267,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                             R.layout.chat_container_left, null);
                 }
 
-                ViewGroup group = ButterKnife.findById(convertView, R.id.content);
+                ViewGroup group = (ViewGroup)convertView.findViewById(R.id.content);
                 final int contentLayout;
                 switch (getMediaType(position)) {
                     case TEXT:
@@ -298,7 +307,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
 
             switch (getMediaType(position)) {
                 case IMAGE:
-                    ImageView imageView = ButterKnife.findById(convertView, R.id.image);
+                    ImageView imageView = (ImageView)convertView.findViewById(R.id.image);
                     Picasso.with(getBaseContext())
                             .load(((IMessage.Image) msg.content).image + "@256w_256h_0c")
                             .into(imageView);
@@ -309,7 +318,6 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                     audioHolder.progress.setMax((int) audio.duration);
                     if (audioUtil.isPlaying() && playingMessage != null && msg.msgLocalID == playingMessage.msgLocalID) {
                         audioHolder.control.setImageResource(R.drawable.chatto_voice_playing_f2);
-                        //audioHolder.progress.setProgress(audioUtil.get);
                     } else {
                         audioHolder.control.setImageResource(R.drawable.chatto_voice_playing);
                         audioHolder.progress.setProgress(0);
@@ -338,8 +346,12 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         super.onCreate(savedInstanceState);
         setContentView(R.layout.chat);
 
+        File f = new File(getCacheDir(), "bh_audio.amr");
+        recordFileName = f.getAbsolutePath();
+        Log.i(TAG, "record file name:" + recordFileName);
+
         listview = (ListView)findViewById(R.id.list_view);
-        audioRecorder = (AudioRecorder)findViewById(R.id.audio_recorder);
+        recordButton = (Button)findViewById(R.id.audio_recorder);
         titleView = (TextView)findViewById(R.id.title);
         subtitleView = (TextView)findViewById(R.id.subtitle);
         toolbar = (Toolbar)findViewById(R.id.support_toolbar);
@@ -406,13 +418,165 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                 adapter.notifyDataSetChanged();
             }
         });
-        audioRecorder.setAudioUtil(audioUtil);
-        audioRecorder.setAudioRecorderListener(this);
-        audioRecorder.setWaveConverter(new AmrWaveConverter());
+
+        audioRecorder = new AudioRecorder(this, this.recordFileName);
+
+        recordButton.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getAction() == MotionEvent.ACTION_DOWN) {
+                    IMActivity.this.startRecord();
+                } else if (event.getAction() == MotionEvent.ACTION_UP) {
+                    Log.i(TAG, "recording end by action button up");
+                    IMActivity.this.stopRecord();
+                } else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
+                    Log.i(TAG, "recording end by action button outside");
+                    IMActivity.this.startRecord();
+                }
+                return false;
+            }
+        });
 
         AudioDownloader.getInstance().addObserver(this);
 
         Outbox.getInstance().addObserver(this);
+    }
+
+    private class VolumeTimerTask extends TimerTask {
+        @Override
+        public void run() {
+            mHandler.post(new Runnable() {
+                @Override
+                public void run() {
+                    IMActivity.this.refreshVolume();
+                }
+            });
+        }
+
+    }
+
+    private void showRecordDialog() {
+        AlertDialog.Builder builder;
+
+        LayoutInflater inflater = (LayoutInflater) this
+                .getSystemService(Activity.LAYOUT_INFLATER_SERVICE);
+        View layout = inflater.inflate(
+                R.layout.conversation_recording_dialog,
+                (ViewGroup) findViewById(R.id.conversation_recording));
+
+        recordingImage = (ImageView) layout
+                .findViewById(R.id.conversation_recording_range);
+        recordingImageBG = (ImageView) layout
+                .findViewById(R.id.conversation_recording_white);
+
+        recordingText = (TextView) layout
+                .findViewById(R.id.conversation_recording_text);
+        recordingText.setText("正在录音");
+
+        builder = new AlertDialog.Builder(this);
+        alertDialog = builder.create();
+        alertDialog.show();
+        alertDialog.getWindow().setContentView(layout);
+    }
+
+    private void refreshVolume() {
+        if (!this.audioRecorder.isRecording()) {
+            return;
+        }
+
+        int max = this.audioRecorder.getMaxAmplitude();
+
+        if (max != 0) {
+            FrameLayout.LayoutParams params = (FrameLayout.LayoutParams) recordingImage
+                    .getLayoutParams();
+            float scale = max / 7000.0f;
+            if (scale < 0.3) {
+                recordingImage
+                        .setImageResource(R.drawable.record_red);
+            } else {
+                recordingImage
+                        .setImageResource(R.drawable.record_green);
+            }
+            if (scale > 1) {
+                scale = 1;
+            }
+            int height = recordingImageBG.getHeight()
+                    - (int) (scale * recordingImageBG.getHeight());
+            params.setMargins(0, 0, 0, -1 * height);
+            recordingImage.setLayoutParams(params);
+
+            ((View) recordingImage).scrollTo(0, height);
+            // Log.i(TAG, "max amplitude: " + max);
+            /**
+             * 倒计时提醒
+             */
+            Date now = new Date();
+            long between = (mBegin.getTime() + 60000)
+                    - now.getTime();
+            if (between < 10000) {
+                int second = (int) (Math.floor((between / 1000)));
+                if (second == 0) {
+                    second = 1;
+                }
+                recordingText.setText("还剩: " + second + "秒");
+            }
+        }
+    }
+
+    private void startRecord() {
+        if (DeviceUtil.isFullStorage()) {
+            Toast.makeText(this, "您没有可用的SD卡，请退出U盘模式或者插入SD卡", 5000)
+                    .show();
+            return;
+        }
+        if (audioUtil.isPlaying()) {
+            audioUtil.stopPlay();
+        }
+
+        mBegin = new Date();
+        //删除上次录音生成的文件内容
+        new File(recordFileName).delete();
+        audioRecorder.startRecord();
+        sixtySecondsTimer = new java.util.Timer();
+        sixtySecondsTimer.schedule(new TimerTask() {
+
+            @Override
+            public void run() {
+                mHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        Log.i(TAG, "recording end by timeout");
+                        IMActivity.this.stopRecord();
+                    }
+                });
+            }
+        }, 60000);
+
+        recordingTimer = new java.util.Timer();
+        recordingTimer.schedule(new VolumeTimerTask(), 0, 100);
+
+        showRecordDialog();
+    }
+
+    private void stopRecord() {
+        // stop sixty seconds limit
+        if (sixtySecondsTimer != null) {
+            sixtySecondsTimer.cancel();
+            sixtySecondsTimer = null;
+        }
+        // stop volume task
+        if (recordingTimer != null) {
+            recordingTimer.cancel();
+            recordingTimer = null;
+        }
+        if (alertDialog != null) {
+            alertDialog.dismiss();
+        }
+
+        if (IMActivity.this.audioRecorder.isRecording()) {
+            IMActivity.this.audioRecorder.stopRecord();
+            IMActivity.this.sendAudioMessage();
+        }
     }
 
     @Override
@@ -568,8 +732,8 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
     }
 
     public void switchButton(View view) {
-        if (audioRecorder.getVisibility() == View.VISIBLE) {
-            audioRecorder.setVisibility(View.GONE);
+        if (recordButton.getVisibility() == View.VISIBLE) {
+            recordButton.setVisibility(View.GONE);
             editText.setVisibility(View.VISIBLE);
             editText.requestFocus();
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -578,7 +742,7 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
                 listview.setSelection(messages.size());
             }
         } else {
-            audioRecorder.setVisibility(View.VISIBLE);
+            recordButton.setVisibility(View.VISIBLE);
             editText.setVisibility(View.GONE);
             editText.clearFocus();
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
@@ -832,13 +996,14 @@ public class IMActivity extends BaseActivity implements IMServiceObserver, Messa
         }
     }
 
-    IMessage playingMessage;
-
     void play(IMessage message) {
         IMessage.Audio audio = (IMessage.Audio) message.content;
         Log.i(TAG, "url:" + audio.url);
         if (FileCache.getInstance().isCached(audio.url)) {
             try {
+                if (audioRecorder.isRecording()) {
+                    audioRecorder.stopRecord();
+                }
                 audioUtil.startPlay(FileCache.getInstance().getCachedFilePath(audio.url));
                 playingMessage = message;
                 adapter.notifyDataSetChanged();
