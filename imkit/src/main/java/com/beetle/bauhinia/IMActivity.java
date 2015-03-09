@@ -22,7 +22,14 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 
+import com.beetle.bauhinia.db.IMessage;
+import com.beetle.bauhinia.db.MessageFlag;
+import com.beetle.bauhinia.db.PeerMessageDB;
+import com.beetle.bauhinia.db.PeerMessageIterator;
 import com.beetle.bauhinia.formatter.MessageFormatter;
+import com.beetle.bauhinia.tools.AudioRecorder;
+import com.beetle.bauhinia.tools.AudioUtil;
+import com.beetle.bauhinia.tools.DeviceUtil;
 import com.beetle.im.*;
 import com.beetle.bauhinia.activity.BaseActivity;
 import com.beetle.bauhinia.activity.PhotoActivity;

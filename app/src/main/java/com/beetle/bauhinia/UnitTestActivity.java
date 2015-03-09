@@ -3,6 +3,10 @@ package com.beetle.bauhinia;
 import android.app.Activity;
 import android.os.Bundle;
 import android.util.Log;
+
+import com.beetle.bauhinia.db.IMessage;
+import com.beetle.bauhinia.db.PeerMessageDB;
+import com.beetle.bauhinia.db.PeerMessageIterator;
 import com.beetle.im.BytePacket;
 import com.beetle.bauhinia.api.types.User;
 import com.beetle.bauhinia.model.*;

@@ -1,6 +1,6 @@
 package com.beetle.bauhinia.formatter;
 
-import com.beetle.bauhinia.IMessage;
+import com.beetle.bauhinia.db.IMessage;
 
 /**
  * Created by tsung on 10/5/14.

@@ -1,6 +1,6 @@
 package com.beetle.bauhinia.tools;
 
-import com.beetle.bauhinia.IMessage;
+import com.beetle.bauhinia.db.IMessage;
 import com.beetle.bauhinia.api.IMHttpAPI;
 import com.beetle.bauhinia.api.types.Audio;
 import com.beetle.bauhinia.api.types.Image;

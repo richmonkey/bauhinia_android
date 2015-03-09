@@ -1,7 +1,7 @@
 package com.beetle.bauhinia.tools;
 import android.os.AsyncTask;
 
-import com.beetle.bauhinia.IMessage;
+import com.beetle.bauhinia.db.IMessage;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
