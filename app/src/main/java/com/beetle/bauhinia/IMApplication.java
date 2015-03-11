@@ -41,9 +41,7 @@ import rx.functions.Action1;
  * Created by houxh on 14-8-24.
  */
 public class IMApplication extends Application implements Application.ActivityLifecycleCallbacks {
-
-
-
+    
     public String deviceToken;
     @Override
     public void onCreate() {
@@ -70,12 +68,6 @@ public class IMApplication extends Application implements Application.ActivityLi
         cdb.monitorConctat(getApplicationContext());
 
         SmartPush.registerReceiver(new IMsgReceiver() {
-            @Override
-            public void onMessage(String message) {
-                // message为透传消息，需开发者在此处理
-                Log.i("PUSH", "透传消息:" + message);
-            }
-
             @Override
             public void onDeviceToken(byte[] tokenArray) {
                 if (null != tokenArray && tokenArray.length == 0) {

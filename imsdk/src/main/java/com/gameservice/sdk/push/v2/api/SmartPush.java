@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.os.*;
+import android.util.Log;
+
 import com.gameservice.sdk.push.v2.singleton.PushInterfaceProvider;
 
 /**
@@ -119,9 +121,7 @@ public class SmartPush implements PushServiceConstants {
 
         private void handlePushMessage(Message msg) {
             String jsonStr = msg.getData().getString(IntentKey.KEY_DATA);
-            if (receiver != null) {
-                receiver.onMessage(jsonStr);
-            }
+            Log.i(TAG, "push message:" + jsonStr);
         }
 
         private void handleDeviceToken(Message msg) {
