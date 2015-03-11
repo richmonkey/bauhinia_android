@@ -41,7 +41,7 @@ import rx.functions.Action1;
  * Created by houxh on 14-8-24.
  */
 public class IMApplication extends Application implements Application.ActivityLifecycleCallbacks {
-    
+
     public String deviceToken;
     @Override
     public void onCreate() {
@@ -95,6 +95,7 @@ public class IMApplication extends Application implements Application.ActivityLi
                 Settings.Secure.ANDROID_ID);
         im.setDeviceID(androidID);
         im.setPeerMessageHandler(PeerMessageHandler.getInstance());
+        im.registerConnectivityChangeReceiver(getApplicationContext());
 
         //already login
         if (Token.getInstance().uid > 0) {
@@ -172,9 +173,6 @@ public class IMApplication extends Application implements Application.ActivityLi
             }
         }
         if (started - stopped == 1) {
-            Log.i(TAG, "register network broadcast receiver");
-            registerBroadcastReceiver();
-
             if (!TextUtils.isEmpty(Token.getInstance().refreshToken)) {
                 refreshToken();
             }
@@ -187,8 +185,6 @@ public class IMApplication extends Application implements Application.ActivityLi
         if (stopped == started) {
             Log.i(TAG, "app enter background stop imservice");
             IMService.getInstance().stop();
-            Log.i(TAG, "unregister network broadcast receiver");
-            unregisterBroadcastReceiver();
         }
     }
 
@@ -204,32 +200,8 @@ public class IMApplication extends Application implements Application.ActivityLi
         return false;
     }
 
-    public void registerBroadcastReceiver() {
-        this.registerReceiver(networdStateReceiver, new IntentFilter("android.net.conn.CONNECTIVITY_CHANGE"));
-    }
 
 
-    public void unregisterBroadcastReceiver() {
-        this.unregisterReceiver(networdStateReceiver);
-    }
-
-
-    BroadcastReceiver networdStateReceiver = new BroadcastReceiver(){
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            if (IMApplication.this.isNetworkConnected(context)) {
-                if (Token.getInstance().uid > 0) {
-                    Log.i(TAG, "network connected start im service");
-                    IMService.getInstance().stop();
-                    IMService.getInstance().start();
-                }
-            } else {
-                Log.i(TAG, "network disconnected stop im service");
-                IMService.getInstance().stop();
-            }
-        }
-    };
 
     private void refreshToken() {
         PostAuthRefreshToken refreshToken = new PostAuthRefreshToken();

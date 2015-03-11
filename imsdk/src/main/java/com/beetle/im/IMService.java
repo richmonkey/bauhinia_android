@@ -1,11 +1,16 @@
 package com.beetle.im;
 
 
+import android.content.BroadcastReceiver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.AsyncTask;
 import android.util.Log;
 import com.beetle.AsyncTCP;
 import com.beetle.TCPConnectCallback;
 import com.beetle.TCPReadCallback;
+import com.gameservice.core.util.NgdsUtils;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
@@ -14,7 +19,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import android.provider.Settings.Secure;
 
 import static android.os.SystemClock.uptimeMillis;
 
@@ -75,6 +79,30 @@ public class IMService {
                 IMService.this.sendHeartbeat();
             }
         };
+    }
+
+    public void registerConnectivityChangeReceiver(Context context) {
+        class NetworkReceiver extends BroadcastReceiver {
+            @Override
+            public void onReceive (Context context, Intent intent) {
+                if (NgdsUtils.isOnNet(context)) {
+                    Log.i(TAG, "connectivity status:on");
+                    if (!IMService.this.stopped) {
+                        Log.i(TAG, "reconnect");
+                        IMService.this.stop();
+                        IMService.this.start();
+                    }
+                } else {
+                    Log.i(TAG, "connectivity status:on");
+                    IMService.this.stop();
+                }
+            }
+        };
+
+        NetworkReceiver  receiver = new NetworkReceiver();
+        IntentFilter filter = new IntentFilter();
+        filter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
+        context.registerReceiver(receiver, filter);
     }
 
     public ConnectState getConnectState() {
