@@ -38,6 +38,9 @@ public class IMService {
     private final int HEARTBEAT = 60*3;
     private AsyncTCP tcp;
     private boolean stopped = true;
+    private boolean suspended = true;
+    private boolean reachable = true;
+
     private Timer connectTimer;
     private Timer heartbeatTimer;
     private int pingTimestamp;
@@ -89,12 +92,13 @@ public class IMService {
                     Log.i(TAG, "connectivity status:on");
                     if (!IMService.this.stopped) {
                         Log.i(TAG, "reconnect");
-                        IMService.this.stop();
-                        IMService.this.start();
+                        IMService.this.resume();
                     }
                 } else {
                     Log.i(TAG, "connectivity status:on");
-                    IMService.this.stop();
+                    if (!IMService.this.stopped) {
+                        IMService.this.suspend();
+                    }
                 }
             }
         };
@@ -145,12 +149,11 @@ public class IMService {
             Log.i(TAG, "already started");
             return;
         }
+        Log.i(TAG, "start im service");
         this.stopped = false;
-        connectTimer.setTimer(uptimeMillis());
-        connectTimer.resume();
-
-        heartbeatTimer.setTimer(uptimeMillis(), HEARTBEAT*1000);
-        heartbeatTimer.resume();
+        if (this.reachable) {
+            this.resume();
+        }
     }
 
     public void stop() {
@@ -158,10 +161,36 @@ public class IMService {
             Log.i(TAG, "already stopped");
             return;
         }
+        Log.i(TAG, "stop im service");
         stopped = true;
+        suspend();
+    }
+
+    private void suspend() {
+        if (this.suspended) {
+            Log.i(TAG, "suspended");
+            return;
+        }
+        Log.i(TAG, "suspend im service");
+        this.suspended = true;
+
         heartbeatTimer.suspend();
         connectTimer.suspend();
         this.close();
+    }
+
+    private void resume() {
+        if (!this.suspended) {
+            return;
+        }
+        Log.i(TAG, "resume im service");
+        this.suspended = false;
+
+        connectTimer.setTimer(uptimeMillis());
+        connectTimer.resume();
+
+        heartbeatTimer.setTimer(uptimeMillis(), HEARTBEAT*1000);
+        heartbeatTimer.resume();
     }
 
     public boolean sendPeerMessage(IMMessage im) {
