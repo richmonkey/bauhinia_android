@@ -26,8 +26,8 @@ import com.beetle.bauhinia.model.ContactDB;
 import com.beetle.bauhinia.tools.BinAscii;
 import com.beetle.bauhinia.tools.FileCache;
 import com.gameservice.sdk.crashdump.NgdsCrashHandler;
-import com.gameservice.sdk.push.api.IMsgReceiver;
-import com.gameservice.sdk.push.api.SmartPush;
+import com.gameservice.sdk.push.v2.api.IMsgReceiver;
+import com.gameservice.sdk.push.v2.api.SmartPush;
 
 import com.google.code.p.leveldb.LevelDB;
 

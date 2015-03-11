@@ -86,16 +86,14 @@
             android:name="NGDS_APPKEY"
             android:value="NbG6GKHDyrCI1OMgDexFPpmYmmf29EyD" />
 
-        <!-- 必需： 推送页面配置 -->
-        <activity android:name="com.gameservice.sdk.push.ui.SmartPushActivity" />
 
         <!-- 必需： push 服务配置 -->
         <service
-            android:name="com.gameservice.sdk.push.api.SmartPushService"/>
+            android:name="com.gameservice.sdk.push.v2.api.SmartPushService"/>
 
         <!-- 必需： push 消息接收配置 -->
         <receiver
-            android:name="com.gameservice.sdk.push.api.SmartPushReceiver"
+            android:name="com.gameservice.sdk.push.v2.api.SmartPushReceiver"
             android:enabled="true"
             android:exported="false"
             android:priority="90000" >

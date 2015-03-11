@@ -48,7 +48,6 @@ dependencies {
     compile project(':imsdk')
     compile project(':imkit')
     compile 'joda-time:joda-time:2.5'
-    compile files('src/main/jniLibs/smart-push-v1.1.7.jar')
     compile files('src/main/jniLibs/crashdump-v1.0.0.jar')
     compile files('src/main/jniLibs/zbar.jar')
 }
