@@ -140,6 +140,20 @@ public class IMService {
         observers.remove(ob);
     }
 
+    public void enterBackground() {
+        Log.i(TAG, "im service enter background");
+        if (!this.stopped) {
+            suspend();
+        }
+    }
+
+    public void enterForeground() {
+        Log.i(TAG, "im service enter foreground");
+        if (!this.stopped) {
+            resume();
+        }
+    }
+
     public void start() {
         if (this.token.length() == 0) {
             throw new RuntimeException("NO TOKEN PROVIDED");

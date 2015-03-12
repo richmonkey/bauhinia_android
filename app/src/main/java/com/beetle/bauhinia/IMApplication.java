@@ -160,13 +160,13 @@ public class IMApplication extends Application implements Application.ActivityLi
         ++started;
 
         if (started - stopped == 1 ) {
-            if (Token.getInstance().uid > 0 && isNetworkConnected(this)) {
+            if (Token.getInstance().uid > 0) {
                 if (stopped == 0) {
                     Log.i(TAG, "app startup start imservice");
                 } else {
                     Log.i(TAG, "app enter foreground start imservice");
                 }
-                IMService.getInstance().start();
+                IMService.getInstance().enterForeground();
             }
         }
         if (started - stopped == 1) {
@@ -181,7 +181,7 @@ public class IMApplication extends Application implements Application.ActivityLi
         ++stopped;
         if (stopped == started) {
             Log.i(TAG, "app enter background stop imservice");
-            IMService.getInstance().stop();
+            IMService.getInstance().enterBackground();
         }
     }
 
