@@ -185,6 +185,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
         IMService im =  IMService.getInstance();
         im.addObserver(this);
+        im.start();
 
         refreshConversations();
         initWidget();

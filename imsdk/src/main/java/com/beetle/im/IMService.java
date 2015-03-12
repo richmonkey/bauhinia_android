@@ -40,6 +40,7 @@ public class IMService {
     private boolean stopped = true;
     private boolean suspended = true;
     private boolean reachable = true;
+    private boolean isBackground = false;
 
     private Timer connectTimer;
     private Timer heartbeatTimer;
@@ -90,7 +91,7 @@ public class IMService {
             public void onReceive (Context context, Intent intent) {
                 if (NgdsUtils.isOnNet(context)) {
                     Log.i(TAG, "connectivity status:on");
-                    if (!IMService.this.stopped) {
+                    if (!IMService.this.stopped && !IMService.this.isBackground) {
                         Log.i(TAG, "reconnect");
                         IMService.this.resume();
                     }
@@ -142,6 +143,7 @@ public class IMService {
 
     public void enterBackground() {
         Log.i(TAG, "im service enter background");
+        this.isBackground = true;
         if (!this.stopped) {
             suspend();
         }
@@ -149,7 +151,8 @@ public class IMService {
 
     public void enterForeground() {
         Log.i(TAG, "im service enter foreground");
-        if (!this.stopped) {
+        this.isBackground = false;
+        if (!this.stopped && this.reachable) {
             resume();
         }
     }
@@ -167,6 +170,10 @@ public class IMService {
         this.stopped = false;
         if (this.reachable) {
             this.resume();
+        }
+        //应用在后台的情况下基本不太可能调用start
+        if (this.isBackground) {
+            Log.w(TAG, "start im service when app is background");
         }
     }
 

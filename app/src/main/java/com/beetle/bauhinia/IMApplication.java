@@ -162,9 +162,9 @@ public class IMApplication extends Application implements Application.ActivityLi
         if (started - stopped == 1 ) {
             if (Token.getInstance().uid > 0) {
                 if (stopped == 0) {
-                    Log.i(TAG, "app startup start imservice");
+                    Log.i(TAG, "app startup");
                 } else {
-                    Log.i(TAG, "app enter foreground start imservice");
+                    Log.i(TAG, "app enter foreground");
                 }
                 IMService.getInstance().enterForeground();
             }
