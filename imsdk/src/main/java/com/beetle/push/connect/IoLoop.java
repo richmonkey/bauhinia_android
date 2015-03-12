@@ -138,11 +138,7 @@ public class IoLoop extends Thread {
             timeout = 0;
         }
 
-        NgdsLog.d(TAG, "select timeout:" + timeout);
         int r = selector.select(timeout);
-
-        NgdsLog.d(TAG, "select timeout finished");
-
         Set<SelectionKey> keys = selector.selectedKeys();
         Iterator<SelectionKey> iter = keys.iterator();
 
