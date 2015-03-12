@@ -3,10 +3,7 @@ package com.beetle.bauhinia;
 import android.app.Activity;
 import android.app.ActivityManager;
 import android.app.Application;
-import android.content.BroadcastReceiver;
 import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
@@ -25,9 +22,9 @@ import com.beetle.bauhinia.api.body.PostAuthRefreshToken;
 import com.beetle.bauhinia.model.ContactDB;
 import com.beetle.bauhinia.tools.BinAscii;
 import com.beetle.bauhinia.tools.FileCache;
+import com.beetle.push.Push;
 import com.gameservice.sdk.crashdump.NgdsCrashHandler;
-import com.gameservice.sdk.push.v2.api.IMsgReceiver;
-import com.gameservice.sdk.push.v2.api.SmartPush;
+import com.beetle.push.IMsgReceiver;
 
 import com.google.code.p.leveldb.LevelDB;
 
@@ -67,7 +64,7 @@ public class IMApplication extends Application implements Application.ActivityLi
         cdb.setContentResolver(getApplicationContext().getContentResolver());
         cdb.monitorConctat(getApplicationContext());
 
-        SmartPush.registerReceiver(new IMsgReceiver() {
+        Push.registerReceiver(new IMsgReceiver() {
             @Override
             public void onDeviceToken(byte[] tokenArray) {
                 if (null != tokenArray && tokenArray.length == 0) {
@@ -84,7 +81,7 @@ public class IMApplication extends Application implements Application.ActivityLi
         });
         // 注册服务，并启动服务
         Log.i(TAG, "start push service");
-        SmartPush.registerService(this);
+        Push.registerService(this);
 
         registerActivityLifecycleCallbacks(this);
 

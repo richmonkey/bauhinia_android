@@ -10,7 +10,7 @@ import android.util.Log;
 import com.beetle.AsyncTCP;
 import com.beetle.TCPConnectCallback;
 import com.beetle.TCPReadCallback;
-import com.gameservice.core.util.NgdsUtils;
+import com.beetle.push.core.util.NgdsUtils;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
