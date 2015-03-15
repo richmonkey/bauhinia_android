@@ -48,8 +48,7 @@ public interface IMHttp {
     @POST("/qrcode/sweep")
     Observable<Object> postQRCode(@Body PostQRCode qrcode);
 
-    @POST("/device/bind")
-    Observable<Object> postDeviceToken(@Body PostDeviceToken token);
+
 
     @Multipart
     @PUT("/users/me/avatar")

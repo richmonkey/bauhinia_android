@@ -27,6 +27,9 @@ import static android.os.SystemClock.uptimeMillis;
  */
 public class IMService {
 
+    private final String HOST = "imnode.gobelieve.io";
+    private final int PORT = 23000;
+
     public enum ConnectState {
         STATE_UNCONNECTED,
         STATE_CONNECTING,
@@ -83,6 +86,9 @@ public class IMService {
                 IMService.this.sendHeartbeat();
             }
         };
+
+        this.host = HOST;
+        this.port = PORT;
     }
 
     public void registerConnectivityChangeReceiver(Context context) {
@@ -113,12 +119,7 @@ public class IMService {
     public ConnectState getConnectState() {
         return connectState;
     }
-    public void setHost(String host) {
-        this.host = host;
-    }
-    public void setPort(int port) {
-        this.port = port;
-    }
+
     public void setToken(String token) {
         this.token = token;
     }

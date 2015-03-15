@@ -86,8 +86,6 @@ public class IMApplication extends Application implements Application.ActivityLi
         registerActivityLifecycleCallbacks(this);
 
         IMService im =  IMService.getInstance();
-        im.setHost(Config.HOST);
-        im.setPort(Config.PORT);
         String androidID = Settings.Secure.getString(this.getContentResolver(),
                 Settings.Secure.ANDROID_ID);
         im.setDeviceID(androidID);
@@ -235,7 +233,7 @@ public class IMApplication extends Application implements Application.ActivityLi
     private void bindDeviceToken(String deviceToken) {
         PostDeviceToken postToken = new PostDeviceToken();
         postToken.deviceToken = deviceToken;
-        IMHttp imHttp = IMHttpFactory.Singleton();
+        IMHttpAPI.IMHttp imHttp = IMHttpAPI.Singleton();
         imHttp.postDeviceToken(postToken)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<Object>() {
