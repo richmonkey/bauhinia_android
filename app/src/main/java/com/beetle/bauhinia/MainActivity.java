@@ -14,6 +14,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+import android.support.v7.widget.Toolbar;
 
 import com.beetle.bauhinia.activity.ZBarActivity;
 import com.beetle.bauhinia.api.body.PostQRCode;
@@ -66,7 +67,6 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     private Timer refreshTimer;
 
-    private android.support.v7.app.ActionBar actionBar;
     private BaseAdapter adapter;
     class ConversationAdapter extends BaseAdapter {
         @Override
@@ -110,8 +110,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     // 初始化组件
     private void initWidget() {
-        actionBar = getSupportActionBar();
-        actionBar.show();
+        Toolbar toolbar = (Toolbar)findViewById(R.id.support_toolbar);
+        setSupportActionBar(toolbar);
 
         lv = (ListView) findViewById(R.id.list);
         adapter = new ConversationAdapter();
@@ -188,6 +188,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         im.start();
 
         refreshConversations();
+
         initWidget();
 
         this.refreshTimer = new Timer() {
