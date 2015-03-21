@@ -442,7 +442,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         } else {
             Log.i(TAG, "group conversation");
 
-            Intent intent = new Intent(this, GroupMessageActivity.class);
+            Intent intent = new Intent(this, AppGroupMessageActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra("group_id", conv.cid);
             intent.putExtra("group_name", conv.name);

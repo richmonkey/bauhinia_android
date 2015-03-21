@@ -2,6 +2,7 @@ package com.beetle.bauhinia;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.beetle.bauhinia.db.GroupMessageDB;
@@ -37,6 +38,7 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
         super();
         sendNotificationName = SEND_MESSAGE_NAME;
         clearNotificationName = CLEAR_MESSAGES;
+        isShowUserName = true;
     }
 
     @Override
@@ -77,6 +79,21 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
         IMService.getInstance().removeObserver(this);
     }
 
+    protected String getUserName(long uid) {
+        return "...";
+    }
+
+    private void loadUserName(long uid) {
+        if (names.containsKey(uid)) {
+            return;
+        }
+
+        String name = getUserName(uid);
+        if (!TextUtils.isEmpty(name)) {
+            names.put(uid, name);
+        }
+    }
+
     protected void loadConversationData() {
         messages = new ArrayList<IMessage>();
 
@@ -87,6 +104,7 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
             if (msg == null) {
                 break;
             }
+            loadUserName(msg.sender);
             updateNotificationDesc(msg);
             messages.add(0, msg);
             if (++count >= PAGE_SIZE) {
@@ -108,6 +126,7 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
             if (msg == null) {
                 break;
             }
+            loadUserName(msg.sender);
             updateNotificationDesc(msg);
             messages.add(0, msg);
             if (++count >= PAGE_SIZE) {
@@ -169,6 +188,7 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
         imsg.receiver = msg.receiver;
         imsg.setContent(msg.content);
 
+        loadUserName(imsg.sender);
         insertMessage(imsg);
         if (imsg.content instanceof IMessage.Audio) {
             try {
@@ -244,9 +264,7 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
         }
     }
 
-    protected String getUserName(long uid) {
-        return "...";
-    }
+
 
     void sendMessage(IMessage imsg) {
         if (imsg.content.getType() == IMessage.MessageType.MESSAGE_AUDIO) {

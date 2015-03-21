@@ -72,10 +72,12 @@ public class MessageActivity extends BaseActivity implements
     protected String sendNotificationName;
     protected String clearNotificationName;
 
+
     protected long sender;
     protected long receiver;
+    protected boolean isShowUserName = false;
 
-
+    protected HashMap<Long, String> names = new HashMap<>();
     protected ArrayList<IMessage> messages = new ArrayList<>();
 
     BaseAdapter adapter;
@@ -181,6 +183,8 @@ public class MessageActivity extends BaseActivity implements
     }
 
     protected void loadEarlierData() {}
+
+
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
@@ -292,6 +296,20 @@ public class MessageActivity extends BaseActivity implements
                 } else {
                     convertView = getLayoutInflater().inflate(
                             R.layout.chat_container_left, null);
+
+                    if (isShowUserName) {
+                        TextView textView = (TextView)convertView.findViewById(R.id.name);
+                        if (names.containsKey(msg.sender)) {
+                            String name = names.get(msg.sender);
+                            textView.setText(name);
+                            textView.setVisibility(View.VISIBLE);
+                        } else {
+                            textView.setVisibility(View.GONE);
+                        }
+                    } else {
+                        TextView textView = (TextView)convertView.findViewById(R.id.name);
+                        textView.setVisibility(View.GONE);
+                    }
                 }
 
                 ViewGroup group = (ViewGroup)convertView.findViewById(R.id.content);

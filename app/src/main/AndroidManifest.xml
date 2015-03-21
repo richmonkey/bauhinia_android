@@ -70,7 +70,7 @@
         </activity>
 
         <activity
-            android:name="com.beetle.bauhinia.GroupMessageActivity"
+            android:name="com.beetle.bauhinia.AppGroupMessageActivity"
             android:exported="true"
             android:windowSoftInputMode="adjustResize"
             android:theme="@style/AppTheme.NoActionBar">
