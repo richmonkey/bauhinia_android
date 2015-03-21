@@ -25,14 +25,12 @@ import android.widget.*;
 
 import com.beetle.bauhinia.db.IMessage;
 import com.beetle.bauhinia.db.MessageFlag;
-import com.beetle.bauhinia.formatter.MessageFormatter;
 import com.beetle.bauhinia.tools.AudioRecorder;
 import com.beetle.bauhinia.tools.AudioUtil;
 import com.beetle.bauhinia.tools.DeviceUtil;
 import com.beetle.im.*;
 import com.beetle.bauhinia.activity.BaseActivity;
 import com.beetle.bauhinia.activity.PhotoActivity;
-import com.beetle.bauhinia.constant.MessageKeys;
 
 import com.beetle.bauhinia.tools.AudioDownloader;
 import com.beetle.bauhinia.tools.FileCache;
@@ -60,7 +58,7 @@ import com.beetle.imkit.R;
 import static com.beetle.bauhinia.constant.RequestCodes.*;
 
 
-public class MessageActivity extends BaseActivity implements  MessageKeys,
+public class MessageActivity extends BaseActivity implements
         AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver,
         Outbox.OutboxObserver, SwipeRefreshLayout.OnRefreshListener {
 
@@ -189,68 +187,7 @@ public class MessageActivity extends BaseActivity implements  MessageKeys,
         onItemClick(i);
     }
 
-    private String localImageURL() {
-        UUID uuid = UUID.randomUUID();
-        return "http://localhost/images/"+ uuid.toString() + ".png";
-    }
 
-    private String localAudioURL() {
-        UUID uuid = UUID.randomUUID();
-        return "http://localhost/audios/" + uuid.toString() + ".amr";
-    }
-
-
-    private void sendAudioMessage() {
-        String tfile = audioRecorder.getPathName();
-
-        try {
-            long mduration = AudioUtil.getAudioDuration(tfile);
-
-            if (mduration < 1000) {
-                Toast.makeText(this, "录音时间太短了", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            long duration = mduration/1000;
-
-            JsonObject content = new JsonObject();
-            JsonObject audioJson = new JsonObject();
-            audioJson.addProperty("duration", duration);
-            audioJson.addProperty("url", localAudioURL());
-            content.add(AUDIO, audioJson);
-
-            IMessage imsg = new IMessage();
-            imsg.sender = this.sender;
-            imsg.receiver = this.receiver;
-            imsg.setContent(content.toString());
-            imsg.timestamp = now();
-
-            saveMessage(imsg);
-
-            Log.i(TAG, "msg local id:" + imsg.msgLocalID);
-            messages.add(imsg);
-
-            adapter.notifyDataSetChanged();
-            listview.smoothScrollToPosition(messages.size()-1);
-
-            IMessage.Audio audio = (IMessage.Audio)imsg.content;
-            FileInputStream is = new FileInputStream(new File(tfile));
-            Log.i(TAG, "store audio url:" + audio.url);
-            FileCache.getInstance().storeFile(audio.url, is);
-
-            sendMessage(imsg);
-
-            NotificationCenter nc = NotificationCenter.defaultCenter();
-            Notification notification = new Notification(imsg, sendNotificationName);
-            nc.postNotification(notification);
-
-        } catch (IllegalStateException e) {
-            e.printStackTrace();
-            return;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return;
-        }
-    }
 
     static interface ContentTypes {
         public static int UNKNOWN = 0;
@@ -402,10 +339,12 @@ public class MessageActivity extends BaseActivity implements  MessageKeys,
                             .toFormatter();
                     audioHolder.duration.setText(periodFormatter.print(period));
                     break;
-                default:
+                case TEXT:
                     TextView content = (TextView)convertView.findViewById(R.id.text);
                     content.setFocusable(false);
-                    content.setText(MessageFormatter.messageContentToString(msg.content));
+                    String text = ((IMessage.Text)msg.content).text;
+                    content.setText(text);
+                default:
                     break;
             }
             return convertView;
@@ -683,12 +622,11 @@ public class MessageActivity extends BaseActivity implements  MessageKeys,
         if (text.length() == 0) {
             return;
         }
-        JsonObject textContent = new JsonObject();
-        textContent.addProperty(TEXT, text);
+
         IMessage imsg = new IMessage();
         imsg.sender = this.sender;
         imsg.receiver = this.receiver;
-        imsg.setContent(textContent.toString());
+        imsg.setContent(IMessage.newText(text));
         imsg.timestamp = now();
 
         saveMessage(imsg);
@@ -708,6 +646,120 @@ public class MessageActivity extends BaseActivity implements  MessageKeys,
         Notification notification = new Notification(imsg, sendNotificationName);
         nc.postNotification(notification);
     }
+
+    void sendImageMessage(Bitmap bmp) {
+        double w = bmp.getWidth();
+        double h = bmp.getHeight();
+        double newHeight = 640.0;
+        double newWidth = newHeight*w/h;
+
+
+        Bitmap bigBMP = Bitmap.createScaledBitmap(bmp, (int)newWidth, (int)newHeight, true);
+
+        double sw = 256.0;
+        double sh = 256.0*h/w;
+
+        Bitmap thumbnail = Bitmap.createScaledBitmap(bmp, (int)sw, (int)sh, true);
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        bigBMP.compress(Bitmap.CompressFormat.JPEG, 100, os);
+        ByteArrayOutputStream os2 = new ByteArrayOutputStream();
+        thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, os2);
+
+        String originURL = localImageURL();
+        String thumbURL = localImageURL();
+        try {
+            FileCache.getInstance().storeByteArray(originURL, os);
+            FileCache.getInstance().storeByteArray(thumbURL, os2);
+
+            String path = FileCache.getInstance().getCachedFilePath(originURL);
+            String thumbPath = FileCache.getInstance().getCachedFilePath(thumbURL);
+
+            String tpath = path + "@256w_256h_0c";
+            File f = new File(thumbPath);
+            File t = new File(tpath);
+            f.renameTo(t);
+
+            IMessage imsg = new IMessage();
+            imsg.sender = this.sender;
+            imsg.receiver = this.receiver;
+            imsg.setContent(IMessage.newImage("file:" + path));
+            imsg.timestamp = now();
+            saveMessage(imsg);
+
+            messages.add(imsg);
+
+            adapter.notifyDataSetChanged();
+            listview.smoothScrollToPosition(messages.size()-1);
+
+            sendMessage(imsg);
+
+            NotificationCenter nc = NotificationCenter.defaultCenter();
+            Notification notification = new Notification(imsg, sendNotificationName);
+            nc.postNotification(notification);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String localImageURL() {
+        UUID uuid = UUID.randomUUID();
+        return "http://localhost/images/"+ uuid.toString() + ".png";
+    }
+
+    private String localAudioURL() {
+        UUID uuid = UUID.randomUUID();
+        return "http://localhost/audios/" + uuid.toString() + ".amr";
+    }
+
+
+    private void sendAudioMessage() {
+        String tfile = audioRecorder.getPathName();
+
+        try {
+            long mduration = AudioUtil.getAudioDuration(tfile);
+
+            if (mduration < 1000) {
+                Toast.makeText(this, "录音时间太短了", Toast.LENGTH_SHORT).show();
+                return;
+            }
+            long duration = mduration/1000;
+
+            String url = localAudioURL();
+            IMessage imsg = new IMessage();
+            imsg.sender = this.sender;
+            imsg.receiver = this.receiver;
+            imsg.setContent(IMessage.newAudio(url, duration));
+            imsg.timestamp = now();
+
+            saveMessage(imsg);
+
+            Log.i(TAG, "msg local id:" + imsg.msgLocalID);
+            messages.add(imsg);
+
+            adapter.notifyDataSetChanged();
+            listview.smoothScrollToPosition(messages.size()-1);
+
+            IMessage.Audio audio = (IMessage.Audio)imsg.content;
+            FileInputStream is = new FileInputStream(new File(tfile));
+            Log.i(TAG, "store audio url:" + audio.url);
+            FileCache.getInstance().storeFile(audio.url, is);
+
+            sendMessage(imsg);
+
+            NotificationCenter nc = NotificationCenter.defaultCenter();
+            Notification notification = new Notification(imsg, sendNotificationName);
+            nc.postNotification(notification);
+
+        } catch (IllegalStateException e) {
+            e.printStackTrace();
+            return;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+    }
+
 
     void getPicture() {
         if (Build.VERSION.SDK_INT <19){
@@ -758,64 +810,6 @@ public class MessageActivity extends BaseActivity implements  MessageKeys,
         sendImageMessage(bmp);
     }
 
-    void sendImageMessage(Bitmap bmp) {
-        double w = bmp.getWidth();
-        double h = bmp.getHeight();
-        double newHeight = 640.0;
-        double newWidth = newHeight*w/h;
-
-
-        Bitmap bigBMP = Bitmap.createScaledBitmap(bmp, (int)newWidth, (int)newHeight, true);
-
-        double sw = 256.0;
-        double sh = 256.0*h/w;
-
-        Bitmap thumbnail = Bitmap.createScaledBitmap(bmp, (int)sw, (int)sh, true);
-        ByteArrayOutputStream os = new ByteArrayOutputStream();
-        bigBMP.compress(Bitmap.CompressFormat.JPEG, 100, os);
-        ByteArrayOutputStream os2 = new ByteArrayOutputStream();
-        thumbnail.compress(Bitmap.CompressFormat.JPEG, 100, os2);
-
-        String originURL = localImageURL();
-        String thumbURL = localImageURL();
-        try {
-            FileCache.getInstance().storeByteArray(originURL, os);
-            FileCache.getInstance().storeByteArray(thumbURL, os2);
-
-            String path = FileCache.getInstance().getCachedFilePath(originURL);
-            String thumbPath = FileCache.getInstance().getCachedFilePath(thumbURL);
-
-            String tpath = path + "@256w_256h_0c";
-            File f = new File(thumbPath);
-            File t = new File(tpath);
-            f.renameTo(t);
-
-
-            JsonObject content = new JsonObject();
-            content.addProperty(IMAGE, "file:" + path);
-
-            IMessage imsg = new IMessage();
-            imsg.sender = this.sender;
-            imsg.receiver = this.receiver;
-            imsg.setContent(content.toString());
-            imsg.timestamp = now();
-            saveMessage(imsg);
-
-            messages.add(imsg);
-
-            adapter.notifyDataSetChanged();
-            listview.smoothScrollToPosition(messages.size()-1);
-
-            sendMessage(imsg);
-
-            NotificationCenter nc = NotificationCenter.defaultCenter();
-            Notification notification = new Notification(imsg, sendNotificationName);
-            nc.postNotification(notification);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     void play(IMessage message) {
         IMessage.Audio audio = (IMessage.Audio) message.content;

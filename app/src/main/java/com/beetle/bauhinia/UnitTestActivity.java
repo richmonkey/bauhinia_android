@@ -6,7 +6,7 @@ import android.util.Log;
 
 import com.beetle.bauhinia.db.IMessage;
 import com.beetle.bauhinia.db.PeerMessageDB;
-import com.beetle.bauhinia.db.PeerMessageIterator;
+import com.beetle.bauhinia.db.MessageIterator;
 import com.beetle.im.BytePacket;
 import com.beetle.bauhinia.api.types.User;
 import com.beetle.bauhinia.model.*;
@@ -110,7 +110,7 @@ testUserDB();
         boolean r = db.insertMessage(msg, msg.receiver);
         Log.i(TAG, "insert:" + r);
 
-        PeerMessageIterator iter = db.newMessageIterator(msg.receiver);
+        MessageIterator iter = db.newMessageIterator(msg.receiver);
         while (true) {
             IMessage msg2 = iter.next();
             if (msg2 == null) break;

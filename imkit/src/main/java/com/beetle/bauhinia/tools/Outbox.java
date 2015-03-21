@@ -2,12 +2,10 @@ package com.beetle.bauhinia.tools;
 
 import com.beetle.bauhinia.db.IMessage;
 import com.beetle.bauhinia.api.IMHttpAPI;
-import com.beetle.bauhinia.constant.MessageKeys;
 import com.beetle.bauhinia.api.types.Audio;
 import com.beetle.bauhinia.api.types.Image;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
-import com.google.gson.JsonObject;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -119,9 +117,7 @@ public class Outbox {
         IMMessage msg = new IMMessage();
         msg.sender = imsg.sender;
         msg.receiver = imsg.receiver;
-        JsonObject content = new JsonObject();
-        content.addProperty(MessageKeys.IMAGE, url);
-        msg.content = content.toString();
+        msg.content = IMessage.newImage(url).getRaw();
         msg.msgLocalID = imsg.msgLocalID;
 
         IMService im = IMService.getInstance();
@@ -135,12 +131,7 @@ public class Outbox {
         msg.sender = imsg.sender;
         msg.receiver = imsg.receiver;
         msg.msgLocalID = imsg.msgLocalID;
-        JsonObject content = new JsonObject();
-        JsonObject audioJson = new JsonObject();
-        audioJson.addProperty("duration", audio.duration);
-        audioJson.addProperty("url", url);
-        content.add(MessageKeys.AUDIO, audioJson);
-        msg.content = content.toString();
+        msg.content = IMessage.newAudio(url, audio.duration).getRaw();
 
         IMService im = IMService.getInstance();
         im.sendPeerMessage(msg);

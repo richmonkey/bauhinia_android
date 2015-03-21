@@ -13,6 +13,8 @@ import android.util.Log;
 
 import com.beetle.bauhinia.api.IMHttpAPI;
 import com.beetle.bauhinia.api.body.PostDeviceToken;
+import com.beetle.bauhinia.db.GroupMessageDB;
+import com.beetle.bauhinia.db.GroupMessageHandler;
 import com.beetle.bauhinia.db.PeerMessageDB;
 import com.beetle.bauhinia.db.PeerMessageHandler;
 import com.beetle.im.IMService;
@@ -60,6 +62,10 @@ public class IMApplication extends Application implements Application.ActivityLi
         PeerMessageDB db = PeerMessageDB.getInstance();
         db.setDir(this.getDir("peer", MODE_PRIVATE));
 
+        GroupMessageDB groupDB = GroupMessageDB.getInstance();
+        groupDB.setDir(this.getDir("group", MODE_PRIVATE));
+
+
         ContactDB cdb = ContactDB.getInstance();
         cdb.setContentResolver(getApplicationContext().getContentResolver());
         cdb.monitorConctat(getApplicationContext());
@@ -90,6 +96,7 @@ public class IMApplication extends Application implements Application.ActivityLi
                 Settings.Secure.ANDROID_ID);
         im.setDeviceID(androidID);
         im.setPeerMessageHandler(PeerMessageHandler.getInstance());
+        im.setGroupMessageHandler(GroupMessageHandler.getInstance());
         im.registerConnectivityChangeReceiver(getApplicationContext());
 
         //already login

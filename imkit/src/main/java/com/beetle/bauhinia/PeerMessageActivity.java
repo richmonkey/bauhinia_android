@@ -6,8 +6,8 @@ import android.util.Log;
 
 import com.beetle.bauhinia.db.IMessage;
 import com.beetle.bauhinia.db.MessageFlag;
+import com.beetle.bauhinia.db.MessageIterator;
 import com.beetle.bauhinia.db.PeerMessageDB;
-import com.beetle.bauhinia.db.PeerMessageIterator;
 import com.beetle.im.*;
 
 import com.beetle.bauhinia.tools.AudioDownloader;
@@ -82,7 +82,7 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
         messages = new ArrayList<IMessage>();
 
         int count = 0;
-        PeerMessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID);
+        MessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID);
         while (iter != null) {
             IMessage msg = iter.next();
             if (msg == null) {
@@ -102,7 +102,7 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
 
         IMessage firsMsg = messages.get(0);
         int count = 0;
-        PeerMessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID, firsMsg.msgLocalID);
+        MessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID, firsMsg.msgLocalID);
         while (iter != null) {
             IMessage msg = iter.next();
             if (msg == null) {
@@ -220,6 +220,18 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
         adapter.notifyDataSetChanged();
     }
 
+    public void onGroupMessage(IMMessage msg) {
+
+    }
+    public void onGroupMessageACK(int msgLocalID, long uid) {
+
+    }
+    public void onGroupMessageFailure(int msgLocalID, long uid) {
+
+    }
+    public void onGroupNotification(String notification) {
+
+    }
 
     void sendMessage(IMessage imsg) {
         if (imsg.content.getType() == IMessage.MessageType.MESSAGE_AUDIO) {

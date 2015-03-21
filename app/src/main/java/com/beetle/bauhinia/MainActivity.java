@@ -21,8 +21,12 @@ import com.beetle.bauhinia.api.body.PostQRCode;
 import com.beetle.bauhinia.api.types.Version;
 import com.beetle.bauhinia.db.Conversation;
 import com.beetle.bauhinia.db.ConversationIterator;
+import com.beetle.bauhinia.db.GroupMessageDB;
 import com.beetle.bauhinia.db.IMessage;
+import com.beetle.bauhinia.db.IMessage.GroupNotification;
 import com.beetle.bauhinia.db.PeerMessageDB;
+import com.beetle.bauhinia.model.Group;
+import com.beetle.bauhinia.model.GroupDB;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
@@ -31,7 +35,6 @@ import com.beetle.bauhinia.activity.BaseActivity;
 import com.beetle.bauhinia.api.IMHttp;
 import com.beetle.bauhinia.api.IMHttpFactory;
 import com.beetle.bauhinia.api.body.PostPhone;
-import com.beetle.bauhinia.formatter.MessageFormatter;
 import com.beetle.bauhinia.model.Contact;
 import com.beetle.bauhinia.model.ContactDB;
 import com.beetle.bauhinia.model.PhoneNumber;
@@ -44,6 +47,7 @@ import com.squareup.picasso.Picasso;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.InputMismatchException;
 import java.util.List;
 
 import rx.android.schedulers.AndroidSchedulers;
@@ -95,7 +99,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
             tv = (TextView)view.findViewById(R.id.content);
             if (c.message != null) {
-                tv.setText(MessageFormatter.messageContentToString(c.message.content));
+                tv.setText(messageContentToString(c.message.content));
             }
 
             if (c.avatar != null && c.avatar.length() > 0) {
@@ -106,6 +110,21 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             }
             return view;
         }
+
+        public  String messageContentToString(IMessage.MessageContent content) {
+            if (content instanceof IMessage.Text) {
+                return ((IMessage.Text) content).text;
+            } else if (content instanceof IMessage.Image) {
+                return "一张图片";
+            } else if (content instanceof IMessage.Audio) {
+                return "一段语音";
+            } else if (content instanceof IMessage.GroupNotification) {
+                return ((GroupNotification) content).description;
+            } else {
+                return content.getRaw();
+            }
+        }
+
     }
 
     // 初始化组件
@@ -350,6 +369,21 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             conv.avatar = u.avatar;
             conversations.add(conv);
         }
+
+        iter = GroupMessageDB.getInstance().newConversationIterator();
+        while (true) {
+            Conversation conv = iter.next();
+            if (conv == null) {
+                break;
+            }
+            if (conv.message == null) {
+                continue;
+            }
+            updateNotificationDesc(conv.message);
+            String groupName = getGroupName(conv.cid);
+            conv.name = groupName;
+            conversations.add(conv);
+        }
     }
 
     private User getUser(long uid) {
@@ -363,21 +397,42 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         return u;
     }
 
+    private String getUserName(long uid) {
+        User u = UserDB.getInstance().loadUser(uid);
+        Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
+        if (c != null) {
+            u.name = c.displayName;
+        } else {
+            u.name = u.number;
+        }
+        return u.name;
+    }
+
+    private String getGroupName(long gid) {
+        GroupDB db = GroupDB.getInstance();
+        return db.getGroupTopic(gid);
+    }
+
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position,
                             long id) {
         Conversation conv = conversations.get(position);
         Log.i(TAG, "conv:" + conv.name);
 
-        User user = getUser(conv.cid);
+        if (conv.type == Conversation.CONVERSATION_PEER) {
 
-        Intent intent = new Intent(this, PeerMessageActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.putExtra("peer_uid", conv.cid);
-        intent.putExtra("peer_name", conv.name);
-        intent.putExtra("peer_up_timestamp", user.up_timestamp);
-        intent.putExtra("current_uid", Token.getInstance().uid);
-        startActivity(intent);
+            User user = getUser(conv.cid);
+
+            Intent intent = new Intent(this, PeerMessageActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra("peer_uid", conv.cid);
+            intent.putExtra("peer_name", conv.name);
+            intent.putExtra("peer_up_timestamp", user.up_timestamp);
+            intent.putExtra("current_uid", Token.getInstance().uid);
+            startActivity(intent);
+        } else {
+            Log.i(TAG, "group conversation");
+        }
     }
 
     public void onConnectState(IMService.ConnectState state) {
@@ -389,34 +444,49 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     public void onPeerMessage(IMMessage msg) {
         Log.i(TAG, "on peer message");
-        Conversation conversation = null;
-        for (int i = 0; i < conversations.size(); i++) {
-            Conversation conv = conversations.get(i);
-            if (conv.cid == msg.sender) {
-                conversation = conv;
-                break;
-            }
-        }
-
-        if (conversation == null) {
-            conversation = new Conversation();
-            conversation.cid = msg.sender;
-            User u = getUser(msg.sender);
-            conversation.name = u.name;
-            conversation.avatar = u.avatar;
-            conversations.add(conversation);
-        }
-
         IMessage imsg = new IMessage();
         imsg.timestamp = now();
         imsg.msgLocalID = msg.msgLocalID;
         imsg.sender = msg.sender;
         imsg.receiver = msg.receiver;
         imsg.setContent(msg.content);
+
+        Conversation conversation = findConversation(msg.sender, Conversation.CONVERSATION_PEER);
+        if (conversation == null) {
+            conversation = newPeerConversation(msg.sender);
+            conversations.add(conversation);
+        }
+
         conversation.message = imsg;
-
         adapter.notifyDataSetChanged();
+    }
 
+    public Conversation findConversation(long cid, int type) {
+        for (int i = 0; i < conversations.size(); i++) {
+            Conversation conv = conversations.get(i);
+            if (conv.cid == cid && conv.type == type) {
+                return conv;
+            }
+        }
+        return null;
+    }
+
+    public Conversation newPeerConversation(long cid) {
+        Conversation conversation = new Conversation();
+        conversation.type = Conversation.CONVERSATION_PEER;
+        conversation.cid = cid;
+        User u = getUser(cid);
+        conversation.name = u.name;
+        conversation.avatar = u.avatar;
+        return conversation;
+    }
+
+    public Conversation newGroupConversation(long cid) {
+        Conversation conversation = new Conversation();
+        conversation.type = Conversation.CONVERSATION_GROUP;
+        conversation.cid = cid;
+        conversation.name = getGroupName(cid);
+        return conversation;
     }
 
     public static int now() {
@@ -432,26 +502,101 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     }
     public void onPeerMessageFailure(int msgLocalID, long uid) {
     }
+    public void onGroupMessage(IMMessage msg) {
+
+    }
+    public void onGroupMessageACK(int msgLocalID, long uid) {
+
+    }
+    public void onGroupMessageFailure(int msgLocalID, long uid) {
+
+    }
+
+    public void onGroupNotification(String text) {
+        GroupNotification groupNotification = IMessage.newGroupNotification(text);
+
+        if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_CREATED) {
+            onGroupCreated(groupNotification);
+        } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_DISBAND) {
+            onGroupDisband(groupNotification);
+        } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_ADDED) {
+            onGroupMemberAdd(groupNotification);
+        } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED) {
+            onGroupMemberLeave(groupNotification);
+        } else {
+            Log.i(TAG, "unknown notification");
+            return;
+        }
+
+        IMessage imsg = new IMessage();
+        imsg.sender = 0;
+        imsg.receiver = groupNotification.groupID;
+        imsg.timestamp = now();
+        imsg.setContent(groupNotification);
+        updateNotificationDesc(imsg);
+
+
+        Conversation conv = findConversation(groupNotification.groupID, Conversation.CONVERSATION_GROUP);
+        if (conv == null) {
+            conv = newGroupConversation(groupNotification.groupID);
+            conversations.add(conv);
+        }
+        conv.message = imsg;
+        adapter.notifyDataSetChanged();
+
+    }
+
+    private void onGroupCreated(IMessage.GroupNotification notification) {
+        GroupDB db = GroupDB.getInstance();
+        Group group = new Group();
+        group.groupID = notification.groupID;
+        group.topic = notification.groupName;
+        group.master = notification.master;
+        group.disbanded = false;
+
+        db.addGroup(group);
+    }
+
+    private void onGroupDisband(IMessage.GroupNotification notification) {
+        GroupDB db = GroupDB.getInstance();
+        db.disbandGroup(notification.groupID);
+    }
+
+    private void onGroupMemberAdd(IMessage.GroupNotification notification) {
+    }
+
+    private void onGroupMemberLeave(IMessage.GroupNotification notification) {
+
+    }
+
+    private void updateNotificationDesc(IMessage imsg) {
+        if (imsg.content.getType() != IMessage.MessageType.MESSAGE_GROUP_NOTIFICATION) {
+            return;
+        }
+        long currentUID = Token.getInstance().uid;
+        GroupNotification notification = (GroupNotification)imsg.content;
+        if (notification.type == GroupNotification.NOTIFICATION_GROUP_CREATED) {
+            if (notification.master == currentUID) {
+                notification.description = String.format("您创建了\"%s\"群组", notification.groupName);
+            } else {
+                notification.description = String.format("您加入了\"%s\"群组", notification.groupName);
+            }
+        } else if (notification.type == GroupNotification.NOTIFICATION_GROUP_DISBAND) {
+            notification.description = "群组已解散";
+        } else if (notification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_ADDED) {
+            notification.description = String.format("\"%s\"加入群", getUserName(notification.member));
+        } else if (notification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED) {
+            notification.description = String.format("\"%s\"离开群", getUserName(notification.member));
+        }
+    }
 
     @Override
     public void onNotification(Notification notification) {
         if (notification.name.equals(PeerMessageActivity.SEND_MESSAGE_NAME)) {
             IMessage imsg = (IMessage) notification.obj;
-            Conversation conversation = null;
-            for (int i = 0; i < conversations.size(); i++) {
-                Conversation conv = conversations.get(i);
-                if (conv.cid == imsg.receiver) {
-                    conversation = conv;
-                    break;
-                }
-            }
-
+            Conversation conversation = findConversation(imsg.receiver, Conversation.CONVERSATION_PEER);
             if (conversation == null) {
-                conversation = new Conversation();
-                conversation.cid = imsg.receiver;
-                User u = getUser(imsg.receiver);
-                conversation.name = u.name;
-                conversation.avatar = u.avatar;
+                conversation = newPeerConversation(imsg.receiver);
                 conversations.add(conversation);
             }
             conversation.message = imsg;
