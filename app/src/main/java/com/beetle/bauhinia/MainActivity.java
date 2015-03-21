@@ -102,12 +102,21 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
                 tv.setText(messageContentToString(c.message.content));
             }
 
+            if (c.type == Conversation.CONVERSATION_PEER) {
+                ImageView imageView = (ImageView) view.findViewById(R.id.header);
+                imageView.setImageResource(R.drawable.avatar_contact);
+            } else {
+                ImageView imageView = (ImageView) view.findViewById(R.id.header);
+                imageView.setImageResource(R.drawable.group_avatar);
+            }
+
             if (c.avatar != null && c.avatar.length() > 0) {
                 ImageView imageView = (ImageView) view.findViewById(R.id.header);
                 Picasso.with(getBaseContext())
                         .load(c.avatar)
                         .into(imageView);
             }
+
             return view;
         }
 
