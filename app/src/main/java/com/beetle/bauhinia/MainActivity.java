@@ -200,8 +200,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         this.refreshTimer.setTimer(1000*1, 1000*3600);
         this.refreshTimer.resume();
         NotificationCenter nc = NotificationCenter.defaultCenter();
-        nc.addObserver(this, IMActivity.SEND_MESSAGE_NAME);
-        nc.addObserver(this, IMActivity.CLEAR_MESSAGES);
+        nc.addObserver(this, PeerMessageActivity.SEND_MESSAGE_NAME);
+        nc.addObserver(this, PeerMessageActivity.CLEAR_MESSAGES);
 
         IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.getLatestVersion()
@@ -371,7 +371,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
         User user = getUser(conv.cid);
 
-        Intent intent = new Intent(this, IMActivity.class);
+        Intent intent = new Intent(this, PeerMessageActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("peer_uid", conv.cid);
         intent.putExtra("peer_name", conv.name);
@@ -435,7 +435,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     @Override
     public void onNotification(Notification notification) {
-        if (notification.name.equals(IMActivity.SEND_MESSAGE_NAME)) {
+        if (notification.name.equals(PeerMessageActivity.SEND_MESSAGE_NAME)) {
             IMessage imsg = (IMessage) notification.obj;
             Conversation conversation = null;
             for (int i = 0; i < conversations.size(); i++) {
@@ -456,7 +456,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             }
             conversation.message = imsg;
             adapter.notifyDataSetChanged();
-        } else if (notification.name.equals(IMActivity.CLEAR_MESSAGES)) {
+        } else if (notification.name.equals(PeerMessageActivity.CLEAR_MESSAGES)) {
             Long peerUID = (Long)notification.obj;
 
             int index = -1;

@@ -125,7 +125,7 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
         }
         User u = users.get(position);
 
-        Intent intent = new Intent(this, IMActivity.class);
+        Intent intent = new Intent(this, PeerMessageActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("peer_uid", u.uid);
         intent.putExtra("peer_name", u.name);
