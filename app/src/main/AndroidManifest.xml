@@ -70,6 +70,16 @@
         </activity>
 
         <activity
+            android:name="com.beetle.bauhinia.GroupMessageActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/AppTheme.NoActionBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name="com.beetle.bauhinia.activity.ZBarActivity"
             android:exported="true">
             <intent-filter>

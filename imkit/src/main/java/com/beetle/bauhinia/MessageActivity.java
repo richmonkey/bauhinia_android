@@ -187,16 +187,14 @@ public class MessageActivity extends BaseActivity implements
         onItemClick(i);
     }
 
-
-
     static interface ContentTypes {
         public static int UNKNOWN = 0;
         public static int AUDIO = 2;
         public static int IMAGE = 4;
         public static int LOCATION = 6;
         public static int TEXT = 8;
+        public static int NOTIFICATION = 10;
     }
-
 
     class ChatAdapter extends BaseAdapter implements ContentTypes {
         @Override
@@ -234,6 +232,8 @@ public class MessageActivity extends BaseActivity implements
                 media = AUDIO;
             } else if (msg.content instanceof IMessage.Location) {
                 media = LOCATION;
+            } else if (msg.content instanceof IMessage.GroupNotification) {
+                media = NOTIFICATION;
             } else {
                 media = UNKNOWN;
             }
@@ -248,7 +248,7 @@ public class MessageActivity extends BaseActivity implements
 
         @Override
         public int getViewTypeCount() {
-            return 10;
+            return 12;
         }
 
         class AudioHolder  {
@@ -267,19 +267,11 @@ public class MessageActivity extends BaseActivity implements
         public View getView(int position, View convertView, ViewGroup parent) {
             IMessage msg = messages.get(position);
             if (convertView == null) {
-                if (isOutMsg(position)) {
-                    convertView = getLayoutInflater().inflate(
-                            R.layout.chat_container_right, null);
-                } else {
-                    convertView = getLayoutInflater().inflate(
-                            R.layout.chat_container_left, null);
-                }
-
-                ViewGroup group = (ViewGroup)convertView.findViewById(R.id.content);
                 final int contentLayout;
-                switch (getMediaType(position)) {
+                int mediaType = getMediaType(position);
+                switch (mediaType) {
                     case TEXT:
-                    case UNKNOWN:
+                    case NOTIFICATION:
                     default:
                         contentLayout = R.layout.chat_content_text;
                         break;
@@ -290,6 +282,20 @@ public class MessageActivity extends BaseActivity implements
                         contentLayout = R.layout.chat_content_image;
                         break;
                 }
+
+                if (mediaType == NOTIFICATION) {
+                    convertView = getLayoutInflater().inflate(
+                            R.layout.chat_container_center, null);
+                } else if (isOutMsg(position)) {
+                    convertView = getLayoutInflater().inflate(
+                            R.layout.chat_container_right, null);
+                } else {
+                    convertView = getLayoutInflater().inflate(
+                            R.layout.chat_container_left, null);
+                }
+
+                ViewGroup group = (ViewGroup)convertView.findViewById(R.id.content);
+
                 group.addView(getLayoutInflater().inflate(contentLayout, group, false));
             }
 
@@ -339,11 +345,20 @@ public class MessageActivity extends BaseActivity implements
                             .toFormatter();
                     audioHolder.duration.setText(periodFormatter.print(period));
                     break;
-                case TEXT:
-                    TextView content = (TextView)convertView.findViewById(R.id.text);
+                case TEXT: {
+                    TextView content = (TextView) convertView.findViewById(R.id.text);
                     content.setFocusable(false);
-                    String text = ((IMessage.Text)msg.content).text;
+                    String text = ((IMessage.Text) msg.content).text;
                     content.setText(text);
+                }
+                    break;
+                case NOTIFICATION: {
+                    TextView content = (TextView) convertView.findViewById(R.id.text);
+                    content.setFocusable(false);
+                    String text = ((IMessage.GroupNotification) msg.content).description;
+                    content.setText(text);
+                }
+                    break;
                 default:
                     break;
             }
@@ -618,6 +633,12 @@ public class MessageActivity extends BaseActivity implements
         Log.i(TAG, "not implemented");
     }
 
+    void insertMessage(IMessage imsg) {
+        messages.add(imsg);
+
+        adapter.notifyDataSetChanged();
+        listview.smoothScrollToPosition(messages.size()-1);
+    }
     void sendTextMessage(String text) {
         if (text.length() == 0) {
             return;
@@ -632,15 +653,13 @@ public class MessageActivity extends BaseActivity implements
         saveMessage(imsg);
         sendMessage(imsg);
 
-        messages.add(imsg);
+        insertMessage(imsg);
 
         editText.setText("");
         editText.clearFocus();
         InputMethodManager inputManager =
                 (InputMethodManager)editText.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
         inputManager.hideSoftInputFromWindow(editText.getWindowToken(), 0);
-        adapter.notifyDataSetChanged();
-        listview.smoothScrollToPosition(messages.size()-1);
 
         NotificationCenter nc = NotificationCenter.defaultCenter();
         Notification notification = new Notification(imsg, sendNotificationName);
@@ -686,10 +705,7 @@ public class MessageActivity extends BaseActivity implements
             imsg.timestamp = now();
             saveMessage(imsg);
 
-            messages.add(imsg);
-
-            adapter.notifyDataSetChanged();
-            listview.smoothScrollToPosition(messages.size()-1);
+            insertMessage(imsg);
 
             sendMessage(imsg);
 
@@ -735,10 +751,8 @@ public class MessageActivity extends BaseActivity implements
             saveMessage(imsg);
 
             Log.i(TAG, "msg local id:" + imsg.msgLocalID);
-            messages.add(imsg);
 
-            adapter.notifyDataSetChanged();
-            listview.smoothScrollToPosition(messages.size()-1);
+            insertMessage(imsg);
 
             IMessage.Audio audio = (IMessage.Audio)imsg.content;
             FileInputStream is = new FileInputStream(new File(tfile));
