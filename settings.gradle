@@ -1,1 +1,3 @@
-include ':app',  ':imsdk', ':imkit'
+include ':app', ':imsdk', ':imkit'
+project(':imsdk').projectDir = new File('im/imsdk')
+project(':imkit').projectDir = new File('im/imkit')
