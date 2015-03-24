@@ -49,6 +49,7 @@ dependencies {
     compile files('src/main/jniLibs/crashdump-v1.0.0.jar')
     compile files('src/main/jniLibs/zbar.jar')
     compile project(':imkit')
+    compile project(':pushsdk')
 }
 
 android {
