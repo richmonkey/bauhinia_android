@@ -67,6 +67,9 @@ public class NewConversation extends BaseActivity implements AdapterView.OnItemC
                 Picasso.with(getBaseContext())
                         .load(c.avatar)
                         .into(imageView);
+            } else {
+                ImageView imageView = (ImageView) view.findViewById(R.id.header);
+                imageView.setImageResource(R.drawable.avatar_contact);
             }
             return view;
         }
