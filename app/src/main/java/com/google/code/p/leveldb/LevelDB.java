@@ -35,6 +35,9 @@ public class LevelDB {
 
     public long getLong(String key) throws Exception {
         String v = get(key);
+        if (v == null) {
+            return 0;
+        }
         return Long.parseLong(v);
     }
 
