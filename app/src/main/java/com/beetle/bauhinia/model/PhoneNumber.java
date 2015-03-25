@@ -68,8 +68,8 @@ public class PhoneNumber {
             }
         }
         if (index > 11) {
-            this.number = new String(dst, 0, 11);
-            this.zone = new String(dst, 11, index-11);
+            this.number = new String(dst, index-11, 11);
+            this.zone = new String(dst, 0, index-11);
             return true;
         } else if (index == 11) {
             this.number = new String(dst, 0, index);
