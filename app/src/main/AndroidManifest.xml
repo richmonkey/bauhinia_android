@@ -96,13 +96,13 @@
 
         <!-- 必需： 应用ID -->
         <meta-data
-            android:name="NGDS_APPID"
-            android:value="10907" />
+            android:name="GOBELIEVE_APPID"
+            android:value="17" />
 
         <!-- 必需： 应用KEY -->
         <meta-data
-            android:name="NGDS_APPKEY"
-            android:value="NbG6GKHDyrCI1OMgDexFPpmYmmf29EyD" />
+            android:name="GOBELIEVE_APPKEY"
+            android:value="lc83RwzODvxaGELdHiOiOmI4vqWC6GkA" />
 
 
         <!-- 必需： push 服务配置 -->
