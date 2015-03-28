@@ -25,6 +25,7 @@ import com.beetle.bauhinia.model.ContactDB;
 import com.beetle.bauhinia.tools.BinAscii;
 import com.beetle.bauhinia.tools.FileCache;
 import com.beetle.push.Push;
+import com.beetle.push.instance.SmartPushServiceProvider;
 import com.gameservice.sdk.crashdump.NgdsCrashHandler;
 import com.beetle.push.IMsgReceiver;
 
@@ -91,9 +92,13 @@ public class IMApplication extends Application implements Application.ActivityLi
 
         registerActivityLifecycleCallbacks(this);
 
+        IMHttpAPI.setAPIURL(Config.SDK_API_URL);
+        SmartPushServiceProvider.setHost(Config.SDK_PUSH_HOST);
         IMService im =  IMService.getInstance();
+        im.setHost(Config.SDK_IM_HOST);
         String androidID = Settings.Secure.getString(this.getContentResolver(),
                 Settings.Secure.ANDROID_ID);
+
         im.setDeviceID(androidID);
         im.setPeerMessageHandler(PeerMessageHandler.getInstance());
         im.setGroupMessageHandler(GroupMessageHandler.getInstance());
