@@ -3,12 +3,16 @@ package io.gobelieve.im.demo;
 import android.app.Application;
 import android.provider.Settings;
 
+import com.beetle.bauhinia.api.IMHttpAPI;
+import com.beetle.bauhinia.db.GroupMessageDB;
+import com.beetle.bauhinia.db.GroupMessageHandler;
 import com.beetle.bauhinia.db.PeerMessageDB;
 import com.beetle.bauhinia.db.PeerMessageHandler;
 import com.beetle.bauhinia.tools.FileCache;
 import com.beetle.im.IMService;
 import com.beetle.push.IMsgReceiver;
 import com.beetle.push.Push;
+import com.beetle.push.instance.SmartPushServiceProvider;
 
 
 /**
@@ -29,6 +33,14 @@ public class IMDemoApplication extends Application {
         super.onCreate();
         sApplication = this;
 
+        IMService mIMService = IMService.getInstance();
+        //app可以单独部署服务器，给予第三方应用更多的灵活性
+        //sandbox地址:"sandbox.imnode.gobelieve.io", "sandbox.pushnode.gobelieve.io"
+        //"http://sandbox.api.gobelieve.io",
+        mIMService.setHost("imnode.gobelieve.io");
+        IMHttpAPI.setAPIURL("http://api.gobelieve.io");
+        SmartPushServiceProvider.setHost("pushnode.gobelieve.io");
+
         //设置推送服务的回调
         Push.registerReceiver(new IMsgReceiver() {
             @Override
@@ -39,9 +51,6 @@ public class IMDemoApplication extends Application {
         //启动后台推送服务
         Push.registerService(getApplicationContext());
 
-
-        //获取IMService
-        IMService mIMService = IMService.getInstance();
         String androidID = Settings.Secure.getString(this.getContentResolver(),
                 Settings.Secure.ANDROID_ID);
 
@@ -56,8 +65,11 @@ public class IMDemoApplication extends Application {
         fc.setDir(this.getDir("cache", MODE_PRIVATE));
         PeerMessageDB db = PeerMessageDB.getInstance();
         db.setDir(this.getDir("peer", MODE_PRIVATE));
+        GroupMessageDB groupDB = GroupMessageDB.getInstance();
+        groupDB.setDir(this.getDir("group", MODE_PRIVATE));
 
         mIMService.setPeerMessageHandler(PeerMessageHandler.getInstance());
+        mIMService.setGroupMessageHandler(GroupMessageHandler.getInstance());
     }
 
     public static Application getApplication() {
