@@ -64,7 +64,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
         if (token != null && deviceToken != null && deviceToken.length > 0) {
             PostDeviceToken tokenBody = new PostDeviceToken();
             tokenBody.deviceToken = LoginActivity.bin2Hex(deviceToken);
-            IMHttpAPI.Singleton().postDeviceToken(tokenBody)
+            IMHttpAPI.Singleton().bindDeviceToken(tokenBody)
                     .observeOn(AndroidSchedulers.mainThread())
                     .subscribe(new Action1<Object>() {
                         @Override
