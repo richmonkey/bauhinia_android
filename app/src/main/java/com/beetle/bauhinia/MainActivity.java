@@ -30,6 +30,7 @@ import com.beetle.bauhinia.model.GroupDB;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
+import com.beetle.im.LoginPoint;
 import com.beetle.im.Timer;
 import com.beetle.bauhinia.activity.BaseActivity;
 import com.beetle.bauhinia.api.IMHttp;
@@ -456,6 +457,11 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     public void onConnectState(IMService.ConnectState state) {
 
     }
+
+    public void onLoginPoint(LoginPoint lp) {
+
+    }
+
     public void onPeerInputting(long uid) {
 
     }
@@ -641,4 +647,5 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     public boolean canBack() {
         return false;
     }
+
 }

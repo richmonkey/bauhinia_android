@@ -246,7 +246,7 @@ public class IMApplication extends Application implements Application.ActivityLi
         PostDeviceToken postToken = new PostDeviceToken();
         postToken.deviceToken = deviceToken;
         IMHttpAPI.IMHttp imHttp = IMHttpAPI.Singleton();
-        imHttp.postDeviceToken(postToken)
+        imHttp.bindDeviceToken(postToken)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<Object>() {
                     @Override
