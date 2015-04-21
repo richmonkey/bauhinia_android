@@ -231,6 +231,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         NotificationCenter nc = NotificationCenter.defaultCenter();
         nc.addObserver(this, PeerMessageActivity.SEND_MESSAGE_NAME);
         nc.addObserver(this, PeerMessageActivity.CLEAR_MESSAGES);
+        nc.addObserver(this, GroupMessageActivity.SEND_MESSAGE_NAME);
+        nc.addObserver(this, GroupMessageActivity.CLEAR_MESSAGES);
 
         IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.getLatestVersion()
@@ -526,8 +528,24 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     }
     public void onPeerMessageFailure(int msgLocalID, long uid) {
     }
-    public void onGroupMessage(IMMessage msg) {
 
+    public void onGroupMessage(IMMessage msg) {
+        Log.i(TAG, "on group message");
+        IMessage imsg = new IMessage();
+        imsg.timestamp = msg.timestamp;
+        imsg.msgLocalID = msg.msgLocalID;
+        imsg.sender = msg.sender;
+        imsg.receiver = msg.receiver;
+        imsg.setContent(msg.content);
+
+        Conversation conversation = findConversation(msg.receiver, Conversation.CONVERSATION_GROUP);
+        if (conversation == null) {
+            conversation = newGroupConversation(msg.receiver);
+            conversations.add(conversation);
+        }
+
+        conversation.message = imsg;
+        adapter.notifyDataSetChanged();
     }
     public void onGroupMessageACK(int msgLocalID, long uid) {
 
@@ -625,20 +643,30 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             }
             conversation.message = imsg;
             adapter.notifyDataSetChanged();
+
         } else if (notification.name.equals(PeerMessageActivity.CLEAR_MESSAGES)) {
             Long peerUID = (Long)notification.obj;
-
-            int index = -1;
-            for (int i = 0; i < conversations.size(); i++) {
-                Conversation conv = conversations.get(i);
-                if (conv.cid == peerUID) {
-                    index = i;
-                    break;
-                }
+            Conversation conversation = findConversation(peerUID, Conversation.CONVERSATION_PEER);
+            if (conversation != null) {
+                conversations.remove(conversation);
+                adapter.notifyDataSetChanged();
             }
 
-            if (index != -1) {
-                conversations.remove(index);
+        } else if (notification.name.equals(GroupMessageActivity.SEND_MESSAGE_NAME)) {
+            IMessage imsg = (IMessage) notification.obj;
+            Conversation conversation = findConversation(imsg.receiver, Conversation.CONVERSATION_GROUP);
+            if (conversation == null) {
+                conversation = newGroupConversation(imsg.receiver);
+                conversations.add(conversation);
+            }
+            conversation.message = imsg;
+            adapter.notifyDataSetChanged();
+
+        }  else if (notification.name.equals(GroupMessageActivity.CLEAR_MESSAGES)) {
+            Long groupID = (Long)notification.obj;
+            Conversation conversation = findConversation(groupID, Conversation.CONVERSATION_GROUP);
+            if (conversation != null) {
+                conversations.remove(conversation);
                 adapter.notifyDataSetChanged();
             }
         }
