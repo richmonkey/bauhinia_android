@@ -8,8 +8,8 @@ android {
         applicationId "com.beetle.bauhinia"
         minSdkVersion 14
         targetSdkVersion 21
-        versionCode 12
-        versionName '1.2'
+        versionCode 13
+        versionName '1.3'
     }
 
     signingConfigs {
@@ -19,6 +19,11 @@ android {
             keyAlias "beetle.im"
             keyPassword "beetlemonkey"
         }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_6
+        targetCompatibility JavaVersion.VERSION_1_6
     }
 
     buildTypes {
