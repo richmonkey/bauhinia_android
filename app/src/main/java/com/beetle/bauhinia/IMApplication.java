@@ -107,6 +107,7 @@ public class IMApplication extends Application implements Application.ActivityLi
         //already login
         if (Token.getInstance().uid > 0) {
             im.setToken(Token.getInstance().accessToken);
+            im.setUID(Token.getInstance().uid);
             IMHttpAPI.setToken(Token.getInstance().accessToken);
         }
         initErrorHandler();
