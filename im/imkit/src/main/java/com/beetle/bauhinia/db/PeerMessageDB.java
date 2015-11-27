@@ -57,22 +57,22 @@ public class PeerMessageDB extends MessageDB {
         }
     }
 
-    public boolean acknowledgeMessageFromRemote(int msgLocalID, long uid) {
+    public boolean markMessageFailure(int msgLocalID, long uid) {
         try {
             File file = new File(this.dir, fileName(uid));
             RandomAccessFile f = new RandomAccessFile(file, "rw");
-            addFlag(f, msgLocalID, MessageFlag.MESSAGE_FLAG_PEER_ACK);
+            addFlag(f, msgLocalID, MessageFlag.MESSAGE_FLAG_FAILURE);
             return true;
         } catch (Exception e) {
             return false;
         }
     }
 
-    public boolean markMessageFailure(int msgLocalID, long uid) {
+    public boolean eraseMessageFailure(int msgLocalID, long uid) {
         try {
             File file = new File(this.dir, fileName(uid));
             RandomAccessFile f = new RandomAccessFile(file, "rw");
-            addFlag(f, msgLocalID, MessageFlag.MESSAGE_FLAG_FAILURE);
+            eraseFlag(f, msgLocalID, MessageFlag.MESSAGE_FLAG_FAILURE);
             return true;
         } catch (Exception e) {
             return false;

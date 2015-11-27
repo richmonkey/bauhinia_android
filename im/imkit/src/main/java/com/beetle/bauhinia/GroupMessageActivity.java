@@ -105,13 +105,20 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
             if (msg == null) {
                 break;
             }
-            loadUserName(msg.sender);
-            updateNotificationDesc(msg);
-            messages.add(0, msg);
-            if (++count >= PAGE_SIZE) {
-                break;
+
+            if (msg.content.getType() == IMessage.MessageType.MESSAGE_ATTACHMENT) {
+                IMessage.Attachment attachment = (IMessage.Attachment)msg.content;
+                attachments.put(attachment.msg_id, attachment);
+            } else {
+                loadUserName(msg.sender);
+                updateNotificationDesc(msg);
+                messages.add(0, msg);
+                if (++count >= PAGE_SIZE) {
+                    break;
+                }
             }
         }
+        downloadMessageContent(messages, count);
     }
 
     protected void loadEarlierData() {
@@ -127,14 +134,21 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
             if (msg == null) {
                 break;
             }
-            loadUserName(msg.sender);
-            updateNotificationDesc(msg);
-            messages.add(0, msg);
-            if (++count >= PAGE_SIZE) {
-                break;
+
+            if (msg.content.getType() == IMessage.MessageType.MESSAGE_ATTACHMENT) {
+                IMessage.Attachment attachment = (IMessage.Attachment) msg.content;
+                attachments.put(attachment.msg_id, attachment);
+            } else {
+                loadUserName(msg.sender);
+                updateNotificationDesc(msg);
+                messages.add(0, msg);
+                if (++count >= PAGE_SIZE) {
+                    break;
+                }
             }
         }
         if (count > 0) {
+            downloadMessageContent(messages, count);
             adapter.notifyDataSetChanged();
             listview.setSelection(count);
         }
@@ -194,14 +208,9 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
         imsg.setContent(msg.content);
 
         loadUserName(imsg.sender);
+
+        downloadMessageContent(imsg);
         insertMessage(imsg);
-        if (imsg.content instanceof IMessage.Audio) {
-            try {
-                AudioDownloader.getInstance().downloadAudio(imsg);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
     }
 
     public void onGroupMessageACK(int msgLocalID, long gid) {
@@ -215,8 +224,7 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
             Log.i(TAG, "can't find msg:" + msgLocalID);
             return;
         }
-        imsg.flags = imsg.flags | MessageFlag.MESSAGE_FLAG_ACK;
-        adapter.notifyDataSetChanged();
+        imsg.setAck(true);
     }
 
     public void onGroupMessageFailure(int msgLocalID, long gid) {
@@ -230,8 +238,7 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
             Log.i(TAG, "can't find msg:" + msgLocalID);
             return;
         }
-        imsg.flags = imsg.flags | MessageFlag.MESSAGE_FLAG_FAILURE;
-        adapter.notifyDataSetChanged();
+        imsg.setFailure(true);
     }
 
     public void onGroupNotification(String text) {
@@ -304,6 +311,16 @@ public class GroupMessageActivity extends MessageActivity implements IMServiceOb
             cid = imsg.sender;
         }
         GroupMessageDB.getInstance().markMessageFailure(imsg.msgLocalID, cid);
+    }
+
+    void eraseMessageFailure(IMessage imsg) {
+        long cid = 0;
+        if (imsg.sender == this.currentUID) {
+            cid = imsg.receiver;
+        } else {
+            cid = imsg.sender;
+        }
+        GroupMessageDB.getInstance().eraseMessageFailure(imsg.msgLocalID, cid);
     }
 
     void clearConversation() {

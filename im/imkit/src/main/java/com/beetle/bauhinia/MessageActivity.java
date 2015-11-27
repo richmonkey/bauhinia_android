@@ -1,17 +1,22 @@
 package com.beetle.bauhinia;
 
+import android.accounts.Account;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.media.MediaPlayer;
 import android.net.Uri;
 import android.os.*;
 import android.provider.MediaStore;
 import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.Toolbar;
+import android.text.ClipboardManager;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -19,11 +24,16 @@ import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.*;
 
+import com.amap.api.services.core.LatLonPoint;
+import com.amap.api.services.geocoder.GeocodeResult;
+import com.amap.api.services.geocoder.GeocodeSearch;
+import com.amap.api.services.geocoder.RegeocodeQuery;
+import com.amap.api.services.geocoder.RegeocodeResult;
 import com.beetle.bauhinia.db.IMessage;
-import com.beetle.bauhinia.db.MessageFlag;
 import com.beetle.bauhinia.tools.AudioRecorder;
 import com.beetle.bauhinia.tools.AudioUtil;
 import com.beetle.bauhinia.tools.DeviceUtil;
@@ -36,12 +46,14 @@ import com.beetle.bauhinia.tools.FileCache;
 import com.beetle.bauhinia.tools.Notification;
 import com.beetle.bauhinia.tools.NotificationCenter;
 import com.beetle.bauhinia.tools.Outbox;
-import com.squareup.picasso.Picasso;
+import com.easemob.easeui.widget.EaseChatExtendMenu;
+import com.easemob.easeui.widget.EaseChatInputMenu;
+
 
 import java.io.ByteArrayOutputStream;
-import org.joda.time.Period;
-import org.joda.time.format.PeriodFormatter;
-import org.joda.time.format.PeriodFormatterBuilder;
+
+
+import com.beetle.bauhinia.ChatItemQuickAction.ChatQuickAction;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -57,12 +69,11 @@ import static com.beetle.bauhinia.constant.RequestCodes.*;
 
 
 public class MessageActivity extends BaseActivity implements
-        AdapterView.OnItemClickListener, AudioDownloader.AudioDownloaderObserver,
-        Outbox.OutboxObserver, SwipeRefreshLayout.OnRefreshListener {
+        AudioDownloader.AudioDownloaderObserver,
+        Outbox.OutboxObserver,
+        SwipeRefreshLayout.OnRefreshListener {
 
     protected final String TAG = "imservice";
-
-
 
     private static final int IN_MSG = 0;
     private static final int OUT_MSG = 1;
@@ -77,6 +88,7 @@ public class MessageActivity extends BaseActivity implements
 
     protected HashMap<Long, String> names = new HashMap<Long, String>();
     protected ArrayList<IMessage> messages = new ArrayList<IMessage>();
+    protected HashMap<Integer, IMessage.Attachment> attachments = new HashMap<Integer, IMessage.Attachment>();
 
     BaseAdapter adapter;
 
@@ -102,12 +114,45 @@ public class MessageActivity extends BaseActivity implements
     AudioUtil audioUtil;
 
     ListView listview;
-    EditText editText;
     TextView titleView;
     TextView subtitleView;
     Toolbar toolbar;
-    Button recordButton;
-    Button sendButton;
+
+    static final int ITEM_TAKE_PICTURE = 1;
+    static final int ITEM_PICTURE = 2;
+    static final int ITEM_LOCATION = 3;
+
+    protected int[] itemStrings = { R.string.attach_take_pic, R.string.attach_picture, R.string.attach_location };
+    protected int[] itemdrawables = { R.drawable.ease_chat_takepic_selector, R.drawable.ease_chat_image_selector,
+            R.drawable.ease_chat_location_selector };
+    protected int[] itemIds = { ITEM_TAKE_PICTURE, ITEM_PICTURE, ITEM_LOCATION };
+
+
+    protected MyItemClickListener extendMenuItemClickListener;
+    protected EaseChatInputMenu inputMenu;
+
+    /**
+     * 扩展菜单栏item点击事件
+     *
+     */
+    class MyItemClickListener implements EaseChatExtendMenu.EaseChatExtendMenuItemClickListener{
+        @Override
+        public void onClick(int itemId, View view) {
+            switch (itemId) {
+                case ITEM_TAKE_PICTURE: // 拍照
+                    takePicture();
+                    break;
+                case ITEM_PICTURE:
+                    getPicture(); // 图库选择图片
+                    break;
+                case ITEM_LOCATION: // 位置
+                    startActivityForResult(new Intent(MessageActivity.this, LocationPickerActivity.class), PICK_LOCATION);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -119,14 +164,57 @@ public class MessageActivity extends BaseActivity implements
         Log.i(TAG, "record file name:" + recordFileName);
 
         listview = (ListView)findViewById(R.id.list_view);
-        recordButton = (Button)findViewById(R.id.audio_recorder);
         titleView = (TextView)findViewById(R.id.title);
         subtitleView = (TextView)findViewById(R.id.subtitle);
         toolbar = (Toolbar)findViewById(R.id.support_toolbar);
-        sendButton = (Button)findViewById(R.id.btn_send);
-        editText = (EditText)findViewById(R.id.text_message);
 
-        listview.setOnItemClickListener(this);
+        extendMenuItemClickListener = new MyItemClickListener();
+        inputMenu = (EaseChatInputMenu)findViewById(R.id.input_menu);
+        registerExtendMenuItem();
+        // init input menu
+        inputMenu.init();
+        inputMenu.setChatInputMenuListener(new EaseChatInputMenu.ChatInputMenuListener() {
+
+            @Override
+            public void onSendMessage(String content) {
+                // 发送文本消息
+                sendTextMessage(content);
+            }
+
+            @Override
+            public boolean onPressToSpeakBtnTouch(View v, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        try {
+                            v.setPressed(true);
+                            MessageActivity.this.startRecord();
+                        } catch (Exception e) {
+                            v.setPressed(false);
+                        }
+                        return true;
+                    case MotionEvent.ACTION_MOVE:
+                        if (event.getY() < 0) {
+                             MessageActivity.this.showReleaseToCancelHint();
+                        } else {
+                             MessageActivity.this.showMoveUpToCancelHint();
+                        }
+                        return true;
+                    case MotionEvent.ACTION_UP:
+                        v.setPressed(false);
+                        if (event.getY() < 0) {
+                            // discard the recorded audio.
+                            MessageActivity.this.discardRecord();
+                        } else {
+                            // stop recording and send voice file
+                            MessageActivity.this.stopRecord();
+                        }
+                        return true;
+                    default:
+                        MessageActivity.this.discardRecord();
+                        return false;
+                }
+            }
+        });
 
         SwipeRefreshLayout swipeLayout = (SwipeRefreshLayout) findViewById(R.id.swipe_container);
         swipeLayout.setOnRefreshListener(this);
@@ -134,16 +222,33 @@ public class MessageActivity extends BaseActivity implements
         adapter = new ChatAdapter();
         listview.setAdapter(adapter);
 
+        listview.setOnTouchListener(new View.OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                //hide keyboard
+                if (getWindow().getAttributes().softInputMode != WindowManager.LayoutParams.SOFT_INPUT_STATE_HIDDEN) {
+                    InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (getCurrentFocus() != null) {
+                        inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+                    }
+                }
+                inputMenu.hideExtendMenuContainer();
+                return false;
+            }
+        });
+
 
         setSubtitle();
         setSupportActionBar(toolbar);
-
 
         audioUtil = new AudioUtil(this);
         audioUtil.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
             @Override
             public void onCompletion(MediaPlayer mediaPlayer) {
-                adapter.notifyDataSetChanged();
+                if (MessageActivity.this.playingMessage != null) {
+                    MessageActivity.this.playingMessage.setPlaying(false);
+                    MessageActivity.this.playingMessage = null;
+                }
             }
         });
         audioUtil.setOnStopListener(new AudioUtil.OnStopListener() {
@@ -155,22 +260,6 @@ public class MessageActivity extends BaseActivity implements
 
         audioRecorder = new AudioRecorder(this, this.recordFileName);
 
-        recordButton.setOnTouchListener(new View.OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                if (event.getAction() == MotionEvent.ACTION_DOWN) {
-                    MessageActivity.this.startRecord();
-                } else if (event.getAction() == MotionEvent.ACTION_UP) {
-                    Log.i(TAG, "recording end by action button up");
-                    MessageActivity.this.stopRecord();
-                } else if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
-                    Log.i(TAG, "recording end by action button outside");
-                    MessageActivity.this.startRecord();
-                }
-                return false;
-            }
-        });
-
         AudioDownloader.getInstance().addObserver(this);
 
         Outbox.getInstance().addObserver(this);
@@ -180,14 +269,17 @@ public class MessageActivity extends BaseActivity implements
         }
     }
 
-    protected void loadEarlierData() {}
 
-
-
-    @Override
-    public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
-        onItemClick(i);
+    /**
+     * 注册底部菜单扩展栏item; 覆盖此方法时如果不覆盖已有item，item的id需大于3
+     */
+    protected void registerExtendMenuItem(){
+        for(int i = 0; i < itemStrings.length; i++){
+            inputMenu.registerExtendMenuItem(itemStrings[i], itemdrawables[i], itemIds[i], extendMenuItemClickListener);
+        }
     }
+
+    protected void loadEarlierData() {}
 
     static interface ContentTypes {
         public static int UNKNOWN = 0;
@@ -196,6 +288,7 @@ public class MessageActivity extends BaseActivity implements
         public static int LOCATION = 6;
         public static int TEXT = 8;
         public static int NOTIFICATION = 10;
+        public static int TIMEBASE = 12;
     }
 
     class ChatAdapter extends BaseAdapter implements ContentTypes {
@@ -236,6 +329,8 @@ public class MessageActivity extends BaseActivity implements
                 media = LOCATION;
             } else if (msg.content instanceof IMessage.GroupNotification) {
                 media = NOTIFICATION;
+            } else if (msg.content instanceof IMessage.TimeBase) {
+                media = TIMEBASE;
             } else {
                 media = UNKNOWN;
             }
@@ -250,154 +345,120 @@ public class MessageActivity extends BaseActivity implements
 
         @Override
         public int getViewTypeCount() {
-            return 12;
-        }
-
-        class AudioHolder  {
-            ImageView control;
-            ProgressBar progress;
-            TextView duration;
-
-            AudioHolder(View view) {
-                control = (ImageView)view.findViewById(R.id.play_control);
-                progress = (ProgressBar)view.findViewById(R.id.progress);
-                duration = (TextView)view.findViewById(R.id.duration);
-            }
+            return 14;
         }
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
             IMessage msg = messages.get(position);
-            if (convertView == null) {
-                final int contentLayout;
-                int mediaType = getMediaType(position);
-                switch (mediaType) {
-                    case TEXT:
-                    case NOTIFICATION:
+            MessageRowView rowView = (MessageRowView)convertView;
+            if (rowView == null) {
+                IMessage.MessageType msgType = msg.content.getType();
+                switch (msgType) {
+                    case MESSAGE_IMAGE:
+                        rowView = new MessageImageView(MessageActivity.this, !isOutMsg(position), isShowUserName);
+                        break;
+                    case MESSAGE_AUDIO:
+                        rowView = new MessageAudioView(MessageActivity.this, !isOutMsg(position), isShowUserName);
+                        break;
+                    case MESSAGE_TEXT:
+                        rowView = new MessageTextView(MessageActivity.this, !isOutMsg(position), isShowUserName);
+                        break;
+                    case MESSAGE_GROUP_NOTIFICATION:
+                        rowView = new MessageNotificationView(MessageActivity.this);
+                        break;
+                    case MESSAGE_LOCATION:
+                        rowView = new MessageLocationView(MessageActivity.this, !isOutMsg(position), isShowUserName);
+                        break;
+                    case MESSAGE_TIME_BASE:
+                        rowView = new MessageTimeBaseView(MessageActivity.this);
+                        break;
                     default:
-                        contentLayout = R.layout.chat_content_text;
-                        break;
-                    case AUDIO:
-                        contentLayout = R.layout.chat_content_audio;
-                        break;
-                    case IMAGE:
-                        contentLayout = R.layout.chat_content_image;
+                        rowView = new MessageTextView(MessageActivity.this, !isOutMsg(position), isShowUserName);
                         break;
                 }
 
-                if (mediaType == NOTIFICATION) {
-                    convertView = getLayoutInflater().inflate(
-                            R.layout.chat_container_center, null);
-                } else if (isOutMsg(position)) {
-                    convertView = getLayoutInflater().inflate(
-                            R.layout.chat_container_right, null);
-                } else {
-                    convertView = getLayoutInflater().inflate(
-                            R.layout.chat_container_left, null);
-
-                    if (isShowUserName) {
-                        TextView textView = (TextView)convertView.findViewById(R.id.name);
-                        if (names.containsKey(msg.sender)) {
-                            String name = names.get(msg.sender);
-                            textView.setText(name);
-                            textView.setVisibility(View.VISIBLE);
-                        } else {
-                            textView.setVisibility(View.GONE);
+                if (rowView != null) {
+                    View contentView = rowView.getContentView();
+                    contentView.setOnClickListener(new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            IMessage im = (IMessage)v.getTag();
+                            Log.i(TAG, "im:" + im.msgLocalID);
+                            MessageActivity.this.onMessageClicked(im);
                         }
-                    } else {
-                        TextView textView = (TextView)convertView.findViewById(R.id.name);
-                        textView.setVisibility(View.GONE);
-                    }
+                    });
+                    contentView.setOnLongClickListener(new View.OnLongClickListener() {
+                        @Override
+                        public boolean onLongClick(View v) {
+                            final IMessage im = (IMessage)v.getTag();
+
+                            ArrayList<ChatQuickAction> actions = new ArrayList<ChatQuickAction>();
+
+                            if (im.isFailure()) {
+                                actions.add(ChatQuickAction.RESEND);
+                            }
+
+                            if (im.content.getType() == IMessage.MessageType.MESSAGE_TEXT) {
+                                actions.add(ChatItemQuickAction.ChatQuickAction.COPY);
+                            }
+
+                            if (actions.size() == 0) {
+                                return true;
+                            }
+
+                            ChatItemQuickAction.showAction(MessageActivity.this,
+                                    actions.toArray(new ChatQuickAction[actions.size()]),
+                                    new ChatItemQuickAction.ChatQuickActionResult() {
+
+                                        @Override
+                                        public void onSelect(ChatQuickAction action) {
+                                            switch (action) {
+                                                case COPY:
+                                                    ClipboardManager clipboard =
+                                                            (ClipboardManager)MessageActivity.this
+                                                                    .getSystemService(Context.CLIPBOARD_SERVICE);
+                                                    clipboard.setText(((IMessage.Text) im.content).text);
+                                                    break;
+                                                case RESEND:
+                                                    MessageActivity.this.resend(im);
+                                                    break;
+                                                default:
+                                                    break;
+                                            }
+                                        }
+                                    }
+                            );
+                            return true;
+                        }
+                    });
                 }
-
-                ViewGroup group = (ViewGroup)convertView.findViewById(R.id.content);
-
-                group.addView(getLayoutInflater().inflate(contentLayout, group, false));
             }
 
-            if (isOutMsg(position)) {
-                if ((msg.flags & MessageFlag.MESSAGE_FLAG_PEER_ACK) != 0) {
-                    Log.i(TAG, "flag remote ack");
-                    ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
-                    flagView.setImageResource(R.drawable.msg_status_client_received);
-                } else if ((msg.flags & MessageFlag.MESSAGE_FLAG_ACK) != 0) {
-                    Log.i(TAG, "flag server ack");
-                    ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
-                    flagView.setImageResource(R.drawable.msg_status_server_receive);
-                } else if ((msg.flags & MessageFlag.MESSAGE_FLAG_FAILURE) != 0) {
-                    //发送失败
-                    Log.i(TAG, "flag failure");
-                    ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
-                    flagView.setImageResource(R.drawable.msg_status_send_error);
-                } else {
-                    ImageView flagView = (ImageView)convertView.findViewById(R.id.flag);
-                    flagView.setImageResource(R.drawable.msg_status_gray_waiting);
-                }
+            if (msg.content.getType() == IMessage.MessageType.MESSAGE_TIME_BASE) {
+                MessageTimeBaseView timeBaseView = (MessageTimeBaseView)rowView;
+                String s = formatTimeBase(((IMessage.TimeBase)msg.content).timestamp);
+                timeBaseView.setTimeBaseMessage(msg, s);
+            } else {
+                rowView.setMessage(msg, !isOutMsg(position));
             }
-
-            switch (getMediaType(position)) {
-                case IMAGE:
-                    ImageView imageView = (ImageView)convertView.findViewById(R.id.image);
-                    Picasso.with(getBaseContext())
-                            .load(((IMessage.Image) msg.content).image + "@256w_256h_0c")
-                            .into(imageView);
-                    break;
-                case AUDIO:
-                    final IMessage.Audio audio = (IMessage.Audio) msg.content;
-                    AudioHolder audioHolder =  new AudioHolder(convertView);
-                    audioHolder.progress.setMax((int) audio.duration);
-                    if (audioUtil.isPlaying() && playingMessage != null && msg.msgLocalID == playingMessage.msgLocalID) {
-                        audioHolder.control.setImageResource(R.drawable.chatto_voice_playing_f2);
-                    } else {
-                        audioHolder.control.setImageResource(R.drawable.chatto_voice_playing);
-                        audioHolder.progress.setProgress(0);
-                    }
-                    Period period = new Period().withSeconds((int) audio.duration);
-                    PeriodFormatter periodFormatter = new PeriodFormatterBuilder()
-                            .appendMinutes()
-                            .appendSeparator(":")
-                            .appendSeconds()
-                            .appendSuffix("\"")
-                            .toFormatter();
-                    audioHolder.duration.setText(periodFormatter.print(period));
-                    break;
-                case TEXT: {
-                    TextView content = (TextView) convertView.findViewById(R.id.text);
-                    content.setFocusable(false);
-                    String text = ((IMessage.Text) msg.content).text;
-                    content.setText(text);
-                }
-                    break;
-                case NOTIFICATION: {
-                    TextView content = (TextView) convertView.findViewById(R.id.text);
-                    content.setFocusable(false);
-                    String text = ((IMessage.GroupNotification) msg.content).description;
-                    content.setText(text);
-                }
-                    break;
-                default:
-                    break;
-            }
-            convertView.requestLayout();
-            return convertView;
+            return rowView;
         }
     }
 
-
     protected void disableSend() {
-        recordButton.setEnabled(false);
-        sendButton.setEnabled(false);
-        findViewById(R.id.button_switch).setEnabled(false);
-        editText.setEnabled(false);
+        inputMenu.disableSend();
     }
 
     protected void enableSend() {
-        recordButton.setEnabled(true);
-        sendButton.setEnabled(true);
-        findViewById(R.id.button_switch).setEnabled(true);
-        editText.setEnabled(true);
+        inputMenu.enableSend();
     }
 
+    void resend(IMessage msg) {
+        eraseMessageFailure(msg);
+        msg.setFailure(false);
+        this.sendMessage(msg);
+    }
 
     private class VolumeTimerTask extends TimerTask {
         @Override
@@ -409,7 +470,17 @@ public class MessageActivity extends BaseActivity implements
                 }
             });
         }
+    }
 
+
+    private void showReleaseToCancelHint() {
+        recordingText.setText(getString(R.string.release_to_cancel));
+        recordingText.setBackgroundResource(R.drawable.ease_recording_text_hint_bg);
+    }
+
+    private void showMoveUpToCancelHint() {
+        recordingText.setText(getString(R.string.move_up_to_cancel));
+        recordingText.setBackgroundColor(Color.TRANSPARENT);
     }
 
     private void showRecordDialog() {
@@ -428,11 +499,13 @@ public class MessageActivity extends BaseActivity implements
 
         recordingText = (TextView) layout
                 .findViewById(R.id.conversation_recording_text);
-        recordingText.setText("正在录音");
+
+        showMoveUpToCancelHint();
 
         builder = new AlertDialog.Builder(this);
         alertDialog = builder.create();
         alertDialog.show();
+        alertDialog.getWindow().setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
         alertDialog.getWindow().setContentView(layout);
     }
 
@@ -515,6 +588,26 @@ public class MessageActivity extends BaseActivity implements
         showRecordDialog();
     }
 
+    private void discardRecord() {
+        // stop sixty seconds limit
+        if (sixtySecondsTimer != null) {
+            sixtySecondsTimer.cancel();
+            sixtySecondsTimer = null;
+        }
+        // stop volume task
+        if (recordingTimer != null) {
+            recordingTimer.cancel();
+            recordingTimer = null;
+        }
+        if (alertDialog != null) {
+            alertDialog.dismiss();
+        }
+
+        if (MessageActivity.this.audioRecorder.isRecording()) {
+            MessageActivity.this.audioRecorder.stopRecord();
+        }
+    }
+
     private void stopRecord() {
         // stop sixty seconds limit
         if (sixtySecondsTimer != null) {
@@ -545,13 +638,7 @@ public class MessageActivity extends BaseActivity implements
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_photo) {
-            getPicture();
-            return true;
-        } else if(id == R.id.action_take) {
-            takePicture();
-            return true;
-        } else if (id == R.id.action_clear) {
+        if (id == R.id.action_clear) {
             clearConversation();
             messages = new ArrayList<IMessage>();
             adapter.notifyDataSetChanged();
@@ -569,7 +656,6 @@ public class MessageActivity extends BaseActivity implements
         swipeLayout.setRefreshing(false);
 
         loadEarlierData();
-
     }
 
     protected void setSubtitle() {
@@ -603,36 +689,12 @@ public class MessageActivity extends BaseActivity implements
         audioUtil.release();
     }
 
-    public void switchButton(View view) {
-        if (recordButton.getVisibility() == View.VISIBLE) {
-            recordButton.setVisibility(View.GONE);
-            editText.setVisibility(View.VISIBLE);
-            editText.requestFocus();
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.showSoftInput(editText, InputMethodManager.SHOW_IMPLICIT);
-            if (messages.size() > 0) {
-                listview.setSelection(messages.size());
-            }
-        } else {
-            recordButton.setVisibility(View.VISIBLE);
-            editText.setVisibility(View.GONE);
-            editText.clearFocus();
-            InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(editText.getWindowToken(), 0);
-        }
-    }
 
     public static int now() {
         Date date = new Date();
         long t = date.getTime();
         return (int)(t/1000);
     }
-
-    public void onSend(View v) {
-        String text = editText.getText().toString();
-        sendTextMessage(text);
-    }
-
 
     void sendMessage(IMessage imsg) {
         Log.i(TAG, "not implemented");
@@ -646,11 +708,126 @@ public class MessageActivity extends BaseActivity implements
         Log.i(TAG, "not implemented");
     }
 
+    void eraseMessageFailure(IMessage imsg) {
+        Log.i(TAG, "not implemented");
+    }
+
     void clearConversation() {
         Log.i(TAG, "not implemented");
     }
 
+    private String formatTimeBase(long ts) {
+        String s = "";
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis((long)(ts) * 1000);
+        int year = cal.get(Calendar.YEAR);
+        int month = cal.get(Calendar.MONTH);
+        int dayOfMonth = cal.get(Calendar.DAY_OF_MONTH);
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        int minute = cal.get(Calendar.MINUTE);
+        int dayOfWeek = cal.get(Calendar.DAY_OF_WEEK);
+        String weeks[] = {"周日", "周一", "周二", "周三", "周四", "周五", "周六"};
+        if (isToday(ts)) {
+            s = String.format("%02d:%02d", hour, minute);
+        } else if (isYesterday(ts)) {
+            s = String.format("昨天 %02d:%02d", hour, minute);
+        } else if (isInWeek(ts)) {
+            s = String.format("%s %02d:%02d", weeks[dayOfWeek - 1], hour, minute);
+        } else if (isInYear(ts)) {
+            s = String.format("%02d-%02d %02d:%02d", month+1, dayOfMonth, hour, minute);
+        } else {
+            s = String.format("%d-%02d-%02d %02d:%02d", year, month+1, dayOfMonth, hour, minute);
+        }
+        return s;
+    }
+
+    private boolean isToday(long ts) {
+        int now = now();
+        return isSameDay(now, ts);
+    }
+
+    private boolean isYesterday(long ts) {
+        int now = now();
+        int yesterday = now - 24*60*60;
+        return isSameDay(ts, yesterday);
+    }
+
+    private boolean isInWeek(long ts) {
+        int now = now();
+        //6天前
+        long day6 = now - 6*24*60*60;
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(day6 * 1000);
+        cal.set(Calendar.HOUR_OF_DAY, 0);
+        cal.set(Calendar.MINUTE, 0);
+        int zero = (int)(cal.getTimeInMillis()/1000);
+        return (ts >= zero);
+    }
+
+    private boolean isInYear(long ts) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(ts*1000);
+        int year = cal.get(Calendar.YEAR);
+
+        cal.setTime(new Date());
+        int y = cal.get(Calendar.YEAR);
+
+        return (year == y);
+    }
+
+    private boolean isSameDay(long ts1, long ts2) {
+        Calendar cal = Calendar.getInstance();
+        cal.setTimeInMillis(ts1 * 1000);
+        int year1 = cal.get(Calendar.YEAR);
+        int month1 = cal.get(Calendar.MONTH);
+        int day1 = cal.get(Calendar.DAY_OF_MONTH);
+
+
+        cal.setTimeInMillis(ts2 * 1000);
+        int year2 = cal.get(Calendar.YEAR);
+        int month2 = cal.get(Calendar.MONTH);
+        int day2 = cal.get(Calendar.DAY_OF_MONTH);
+
+        return ((year1==year2) && (month1==month2) && (day1==day2));
+    }
+
+    protected void resetMessageTimeBase() {
+        ArrayList<IMessage> newMessages = new ArrayList<IMessage>();
+        IMessage lastMsg = null;
+        for (int i = 0; i < messages.size(); i++) {
+            IMessage msg = messages.get(i);
+            if (msg.content.getType() == IMessage.MessageType.MESSAGE_TIME_BASE) {
+                continue;
+            }
+            //间隔10分钟，添加时间分割线
+            if (lastMsg == null || msg.timestamp - lastMsg.timestamp > 10*60) {
+                IMessage.TimeBase timeBase = IMessage.newTimeBase(msg.timestamp);
+                IMessage t = new IMessage();
+                t.content = timeBase;
+                t.timestamp = msg.timestamp;
+                newMessages.add(t);
+            }
+            newMessages.add(msg);
+
+            lastMsg = msg;
+        }
+        messages = newMessages;
+    }
+
     void insertMessage(IMessage imsg) {
+        IMessage lastMsg = null;
+        if (messages.size() > 0) {
+            lastMsg = messages.get(messages.size() - 1);
+        }
+        //间隔10分钟，添加时间分割线
+        if (lastMsg == null || imsg.timestamp - lastMsg.timestamp > 10*60) {
+            IMessage.TimeBase timeBase = IMessage.newTimeBase(imsg.timestamp);
+            IMessage t = new IMessage();
+            t.content = timeBase;
+            t.timestamp = imsg.timestamp;
+            messages.add(t);
+        }
+
         messages.add(imsg);
 
         adapter.notifyDataSetChanged();
@@ -671,12 +848,6 @@ public class MessageActivity extends BaseActivity implements
         sendMessage(imsg);
 
         insertMessage(imsg);
-
-        editText.setText("");
-        editText.clearFocus();
-        InputMethodManager inputManager =
-                (InputMethodManager)editText.getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-        inputManager.hideSoftInputFromWindow(editText.getWindowToken(), 0);
 
         NotificationCenter nc = NotificationCenter.defaultCenter();
         Notification notification = new Notification(imsg, sendNotificationName);
@@ -822,7 +993,8 @@ public class MessageActivity extends BaseActivity implements
         Bitmap bmp;
         if (requestCode == TAKE_PICTURE) {
             bmp = (Bitmap) data.getExtras().get("data");
-        } else if (requestCode == SELECT_PICTURE || requestCode == SELECT_PICTURE_KITKAT)  {
+
+        } else if (requestCode == SELECT_PICTURE || requestCode == SELECT_PICTURE_KITKAT) {
             try {
                 Uri selectedImageUri = data.getData();
                 Log.i(TAG, "selected image uri:" + selectedImageUri);
@@ -830,15 +1002,48 @@ public class MessageActivity extends BaseActivity implements
                 BitmapFactory.Options options = new BitmapFactory.Options();
                 options.inPreferredConfig = Bitmap.Config.ARGB_8888;
                 bmp = BitmapFactory.decodeStream(is, null, options);
+                sendImageMessage(bmp);
             } catch (Exception e) {
                 e.printStackTrace();
                 return;
             }
+        } else if (requestCode == PICK_LOCATION) {
+            float longitude = data.getFloatExtra("longitude", 0);
+            float latitude = data.getFloatExtra("latitude", 0);
+            String address = data.getStringExtra("address");
+
+            Log.i(TAG, "address:" + address + " longitude:" + longitude + " latitude:" + latitude);
+
+            IMessage imsg = new IMessage();
+            imsg.sender = this.sender;
+            imsg.receiver = this.receiver;
+            IMessage.Location loc = IMessage.newLocation(latitude, longitude);
+            imsg.setContent(loc);
+            imsg.timestamp = now();
+            saveMessage(imsg);
+
+            loc.address = address;
+            if (TextUtils.isEmpty(loc.address)) {
+                queryLocation(imsg);
+            } else {
+                IMessage attachment = new IMessage();
+                attachment.content = IMessage.newAttachment(imsg.msgLocalID, loc.address);
+                attachment.sender = imsg.sender;
+                attachment.receiver = imsg.receiver;
+                saveMessage(attachment);
+            }
+
+            insertMessage(imsg);
+            sendMessage(imsg);
+
+            NotificationCenter nc = NotificationCenter.defaultCenter();
+            Notification notification = new Notification(imsg, sendNotificationName);
+            nc.postNotification(notification);
         } else {
             Log.i(TAG, "invalide request code:" + requestCode);
             return;
         }
-        sendImageMessage(bmp);
+
     }
 
 
@@ -850,17 +1055,27 @@ public class MessageActivity extends BaseActivity implements
                 if (audioRecorder.isRecording()) {
                     audioRecorder.stopRecord();
                 }
-                audioUtil.startPlay(FileCache.getInstance().getCachedFilePath(audio.url));
-                playingMessage = message;
-                adapter.notifyDataSetChanged();
+                if (playingMessage != null && playingMessage == message) {
+                    //停止播放
+                    audioUtil.stopPlay();
+                    playingMessage.setPlaying(false);
+                    playingMessage = null;
+                } else {
+                    if (playingMessage != null) {
+                        audioUtil.stopPlay();
+                        playingMessage.setPlaying(false);
+                    }
+                    audioUtil.startPlay(FileCache.getInstance().getCachedFilePath(audio.url));
+                    playingMessage = message;
+                    message.setPlaying(true);
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
     }
 
-    void onItemClick(int position) {
-        final IMessage message = messages.get(position);
+    void onMessageClicked(IMessage message) {
         if (message.content instanceof IMessage.Audio) {
             IMessage.Audio audio = (IMessage.Audio) message.content;
             if (FileCache.getInstance().isCached(audio.url)) {
@@ -875,6 +1090,82 @@ public class MessageActivity extends BaseActivity implements
         } else if (message.content instanceof IMessage.Image) {
             IMessage.Image image = (IMessage.Image) message.content;
             startActivity(PhotoActivity.newIntent(this, image.image));
+        } else if (message.content.getType() == IMessage.MessageType.MESSAGE_LOCATION) {
+            Log.i(TAG, "location message clicked");
+            IMessage.Location loc = (IMessage.Location)message.content;
+            startActivity(MapActivity.newIntent(this, loc.longitude, loc.latitude));
+        }
+    }
+
+    protected void downloadMessageContent(IMessage msg) {
+        if (msg.content.getType() == IMessage.MessageType.MESSAGE_AUDIO) {
+            IMessage.Audio audio = (IMessage.Audio) msg.content;
+            AudioDownloader downloader = AudioDownloader.getInstance();
+            if (!FileCache.getInstance().isCached(audio.url) && !downloader.isDownloading(msg)) {
+                try {
+                    downloader.downloadAudio(msg);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            msg.setDownloading(downloader.isDownloading(msg));
+            msg.setUploading(Outbox.getInstance().isUploading(msg));
+        } else if (msg.content.getType() == IMessage.MessageType.MESSAGE_IMAGE) {
+            msg.setUploading(Outbox.getInstance().isUploading(msg));
+        } else if (msg.content.getType() == IMessage.MessageType.MESSAGE_LOCATION) {
+            IMessage.Location loc = (IMessage.Location)msg.content;
+            IMessage.Attachment attachment = attachments.get(msg.msgLocalID);
+            if (attachment != null) {
+                loc.address = attachment.address;
+            }
+
+            if (TextUtils.isEmpty(loc.address)) {
+                queryLocation(msg);
+            }
+        }
+    }
+
+    private void queryLocation(final IMessage msg) {
+        final IMessage.Location loc = (IMessage.Location)msg.content;
+
+        msg.setGeocoding(true);
+        // 第一个参数表示一个Latlng，第二参数表示范围多少米，第三个参数表示是火系坐标系还是GPS原生坐标系
+        RegeocodeQuery query = new RegeocodeQuery(new LatLonPoint(loc.latitude, loc.longitude), 200, GeocodeSearch.AMAP);
+
+        GeocodeSearch mGeocodeSearch = new GeocodeSearch(this);
+        mGeocodeSearch.setOnGeocodeSearchListener(new GeocodeSearch.OnGeocodeSearchListener() {
+            @Override
+            public void onRegeocodeSearched(RegeocodeResult regeocodeResult, int i) {
+                if (i == 0 && regeocodeResult != null && regeocodeResult.getRegeocodeAddress() != null
+                        && regeocodeResult.getRegeocodeAddress().getFormatAddress() != null) {
+                    String address = regeocodeResult.getRegeocodeAddress().getFormatAddress();
+                    Log.i(TAG, "address:" + address);
+                    loc.address = address;
+
+                    IMessage attachment = new IMessage();
+                    attachment.content = IMessage.newAttachment(msg.msgLocalID, address);
+                    attachment.sender = msg.sender;
+                    attachment.receiver = msg.receiver;
+                    saveMessage(attachment);
+                } else {
+                    // 定位失败;
+                }
+                msg.setGeocoding(false);
+            }
+
+            @Override
+            public void onGeocodeSearched(GeocodeResult geocodeResult, int i) {
+
+            }
+        });
+
+        mGeocodeSearch.getFromLocationAsyn(query);// 设置同步逆地理编码请求
+    }
+
+    protected void downloadMessageContent(ArrayList<IMessage> messages, int count) {
+        for (int i = 0; i < count; i++) {
+            IMessage msg = messages.get(i);
+            downloadMessageContent(msg);
         }
     }
 
@@ -897,21 +1188,18 @@ public class MessageActivity extends BaseActivity implements
     public void onAudioUploadFail(IMessage msg) {
         Log.i(TAG, "audio upload fail");
         markMessageFailure(msg);
-        msg.flags = msg.flags | MessageFlag.MESSAGE_FLAG_FAILURE;
-        adapter.notifyDataSetChanged();
+        msg.setFailure(true);
     }
 
     @Override
     public void onImageUploadSuccess(IMessage imsg, String url) {
         Log.i(TAG, "image upload success:" + url);
-
     }
 
     @Override
     public void onImageUploadFail(IMessage msg) {
         Log.i(TAG, "image upload fail");
         this.markMessageFailure(msg);
-        msg.flags = msg.flags | MessageFlag.MESSAGE_FLAG_FAILURE;
-        adapter.notifyDataSetChanged();
+        msg.setFailure(true);
     }
 }
