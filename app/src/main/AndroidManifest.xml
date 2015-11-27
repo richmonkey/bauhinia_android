@@ -3,6 +3,12 @@
     package="com.beetle.bauhinia"
     >
 
+    <!--高德地图所需权限-->
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+
+
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_USER_DICTIONARY" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
@@ -75,6 +81,19 @@
             android:theme="@style/imkit.ActionBar">
         </activity>
 
+
+        <activity
+            android:name="com.beetle.bauhinia.MapActivity"
+            android:label="位置"
+            android:theme="@style/imkit.ActionBar">
+        </activity>
+        <activity
+            android:name="com.beetle.bauhinia.LocationPickerActivity"
+            android:label="位置"
+            android:theme="@style/imkit.ActionBar">
+        </activity>
+
+
         <activity
             android:name="com.beetle.bauhinia.AppGroupMessageActivity"
             android:exported="true"
@@ -92,6 +111,12 @@
                 <action android:name="android.intent.action.VIEW" />
             </intent-filter>
         </activity>
+
+
+        <!--高德地图配置-->
+        <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="20df93d5120f964ab5122dafb1dd5b4e" />
 
 
         <!-- 必需： 应用ID -->
