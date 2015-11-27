@@ -103,18 +103,18 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
                 tv.setText(messageContentToString(c.message.content));
             }
 
+            int placeholder;
             if (c.type == Conversation.CONVERSATION_PEER) {
-                ImageView imageView = (ImageView) view.findViewById(R.id.header);
-                imageView.setImageResource(R.drawable.avatar_contact);
+                placeholder = R.drawable.avatar_contact;
             } else {
-                ImageView imageView = (ImageView) view.findViewById(R.id.header);
-                imageView.setImageResource(R.drawable.group_avatar);
+                placeholder = R.drawable.group_avatar;
             }
 
             if (c.avatar != null && c.avatar.length() > 0) {
                 ImageView imageView = (ImageView) view.findViewById(R.id.header);
                 Picasso.with(getBaseContext())
                         .load(c.avatar)
+                        .placeholder(placeholder)
                         .into(imageView);
             }
 
@@ -130,6 +130,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
                 return "一段语音";
             } else if (content instanceof IMessage.GroupNotification) {
                 return ((GroupNotification) content).description;
+            } else if (content instanceof IMessage.Location) {
+                return "一个地理位置";
             } else {
                 return content.getRaw();
             }
@@ -477,9 +479,16 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         imsg.receiver = msg.receiver;
         imsg.setContent(msg.content);
 
-        Conversation conversation = findConversation(msg.sender, Conversation.CONVERSATION_PEER);
+        long cid = 0;
+        if (msg.sender == Token.getInstance().uid) {
+            cid = msg.receiver;
+        } else {
+            cid = msg.sender;
+        }
+
+        Conversation conversation = findConversation(cid, Conversation.CONVERSATION_PEER);
         if (conversation == null) {
-            conversation = newPeerConversation(msg.sender);
+            conversation = newPeerConversation(cid);
             conversations.add(conversation);
         }
 
@@ -524,8 +533,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     public void onPeerMessageACK(int msgLocalID, long uid) {
         Log.i(TAG, "message ack on main");
     }
-    public void onPeerMessageRemoteACK(int msgLocalID, long uid) {
-    }
+
     public void onPeerMessageFailure(int msgLocalID, long uid) {
     }
 
