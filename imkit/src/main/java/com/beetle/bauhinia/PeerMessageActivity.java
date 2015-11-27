@@ -5,18 +5,15 @@ import android.os.*;
 import android.util.Log;
 
 import com.beetle.bauhinia.db.IMessage;
-import com.beetle.bauhinia.db.MessageFlag;
 import com.beetle.bauhinia.db.MessageIterator;
 import com.beetle.bauhinia.db.PeerMessageDB;
 import com.beetle.im.*;
 
-import com.beetle.bauhinia.tools.AudioDownloader;
 import com.beetle.bauhinia.tools.FileCache;
 
 import com.beetle.bauhinia.tools.Outbox;
 import com.beetle.im.Timer;
 
-import java.io.IOException;
 import java.util.*;
 
 
@@ -78,6 +75,7 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
         IMService.getInstance().removeObserver(this);
     }
 
+
     protected void loadConversationData() {
         messages = new ArrayList<IMessage>();
 
@@ -88,11 +86,20 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
             if (msg == null) {
                 break;
             }
-            messages.add(0, msg);
-            if (++count >= PAGE_SIZE) {
-                break;
+
+            if (msg.content.getType() == IMessage.MessageType.MESSAGE_ATTACHMENT) {
+                IMessage.Attachment attachment = (IMessage.Attachment)msg.content;
+                attachments.put(attachment.msg_id, attachment);
+            } else {
+                messages.add(0, msg);
+                if (++count >= PAGE_SIZE) {
+                    break;
+                }
             }
         }
+
+        downloadMessageContent(messages, count);
+        resetMessageTimeBase();
     }
 
     protected void loadEarlierData() {
@@ -100,20 +107,39 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
             return;
         }
 
-        IMessage firsMsg = messages.get(0);
+        IMessage firstMsg = null;
+        for (int i  = 0; i < messages.size(); i++) {
+            IMessage msg = messages.get(i);
+            if (msg.msgLocalID > 0) {
+                firstMsg = msg;
+                break;
+            }
+        }
+        if (firstMsg == null) {
+            return;
+        }
+
         int count = 0;
-        MessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID, firsMsg.msgLocalID);
+        MessageIterator iter = PeerMessageDB.getInstance().newMessageIterator(peerUID, firstMsg.msgLocalID);
         while (iter != null) {
             IMessage msg = iter.next();
             if (msg == null) {
                 break;
             }
-            messages.add(0, msg);
-            if (++count >= PAGE_SIZE) {
-                break;
+
+            if (msg.content.getType() == IMessage.MessageType.MESSAGE_ATTACHMENT) {
+                IMessage.Attachment attachment = (IMessage.Attachment)msg.content;
+                attachments.put(attachment.msg_id, attachment);
+            } else{
+                messages.add(0, msg);
+                if (++count >= PAGE_SIZE) {
+                    break;
+                }
             }
         }
         if (count > 0) {
+            downloadMessageContent(messages, count);
+            resetMessageTimeBase();
             adapter.notifyDataSetChanged();
             listview.setSelection(count);
         }
@@ -149,7 +175,7 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
     }
 
     public void onPeerMessage(IMMessage msg) {
-        if (msg.sender != peerUID) {
+        if (msg.sender != peerUID && msg.receiver != peerUID) {
             return;
         }
         Log.i(TAG, "recv msg:" + msg.content);
@@ -159,17 +185,10 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
         imsg.sender = msg.sender;
         imsg.receiver = msg.receiver;
         imsg.setContent(msg.content);
-        messages.add(imsg);
 
-        adapter.notifyDataSetChanged();
-        listview.smoothScrollToPosition(messages.size()-1);
-        if (imsg.content instanceof IMessage.Audio) {
-            try {
-                AudioDownloader.getInstance().downloadAudio(imsg);
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
+        downloadMessageContent(imsg);
+
+        insertMessage(imsg);
     }
     private IMessage findMessage(int msgLocalID) {
         for (IMessage imsg : messages) {
@@ -191,22 +210,7 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
             Log.i(TAG, "can't find msg:" + msgLocalID);
             return;
         }
-        imsg.flags = imsg.flags | MessageFlag.MESSAGE_FLAG_ACK;
-        adapter.notifyDataSetChanged();
-    }
-    public void onPeerMessageRemoteACK(int msgLocalID, long uid) {
-        if (peerUID != uid) {
-            return;
-        }
-        Log.i(TAG, "message remote ack");
-
-        IMessage imsg = findMessage(msgLocalID);
-        if (imsg == null) {
-            Log.i(TAG, "can't find msg:" + msgLocalID);
-            return;
-        }
-        imsg.flags = imsg.flags | MessageFlag.MESSAGE_FLAG_PEER_ACK;
-        adapter.notifyDataSetChanged();
+        imsg.setAck(true);
     }
 
     public void onPeerMessageFailure(int msgLocalID, long uid) {
@@ -220,8 +224,7 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
             Log.i(TAG, "can't find msg:" + msgLocalID);
             return;
         }
-        imsg.flags = imsg.flags | MessageFlag.MESSAGE_FLAG_FAILURE;
-        adapter.notifyDataSetChanged();
+        imsg.setFailure(true);
     }
 
     public void onGroupMessage(IMMessage msg) {
@@ -274,6 +277,16 @@ public class PeerMessageActivity extends MessageActivity implements IMServiceObs
             cid = imsg.sender;
         }
         PeerMessageDB.getInstance().markMessageFailure(imsg.msgLocalID, cid);
+    }
+
+    void eraseMessageFailure(IMessage imsg) {
+        long cid = 0;
+        if (imsg.sender == this.currentUID) {
+            cid = imsg.receiver;
+        } else {
+            cid = imsg.sender;
+        }
+        PeerMessageDB.getInstance().eraseMessageFailure(imsg.msgLocalID, cid);
     }
 
     void clearConversation() {

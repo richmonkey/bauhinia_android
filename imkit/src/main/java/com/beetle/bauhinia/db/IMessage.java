@@ -6,6 +6,8 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeSupport;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -21,14 +23,18 @@ public class IMessage {
     public static final String LOCATION = "location";
     public static final String AUDIO = "audio";
     public static final String NOTIFICATION = "notification";
-
+    public static final String ATTACHMENT = "attachment";
+    public static final String TIMEBASE = "timebase";
 
     public static enum MessageType {
         MESSAGE_UNKNOWN,
         MESSAGE_TEXT,
         MESSAGE_AUDIO,
         MESSAGE_IMAGE,
+        MESSAGE_LOCATION,
         MESSAGE_GROUP_NOTIFICATION,
+        MESSAGE_ATTACHMENT,
+        MESSAGE_TIME_BASE //虚拟的消息，不会存入磁盘
     }
 
     static Gson gson = new GsonBuilder().create();
@@ -64,6 +70,41 @@ public class IMessage {
         image.raw = content.toString();
         image.image = url;
         return image;
+    }
+
+    public static Location newLocation(float latitude, float longitude) {
+        Location location = new Location();
+        JsonObject content = new JsonObject();
+        JsonObject locationJson = new JsonObject();
+        locationJson.addProperty("latitude", latitude);
+        locationJson.addProperty("longitude", longitude);
+        content.add(LOCATION, locationJson);
+        location.raw = content.toString();
+        location.longitude = longitude;
+        location.latitude = latitude;
+        return location;
+    }
+
+    public static Attachment newAttachment(int msgLocalID, String address) {
+        Attachment attachment = new Attachment();
+        JsonObject content = new JsonObject();
+        JsonObject attachmentJson = new JsonObject();
+        attachmentJson.addProperty("msg_id", msgLocalID);
+        attachmentJson.addProperty("address", address);
+        content.add(ATTACHMENT, attachmentJson);
+        attachment.raw = content.toString();
+        attachment.address = address;
+        attachment.msg_id = msgLocalID;
+        return attachment;
+    }
+
+    public static TimeBase newTimeBase(int timestamp) {
+        TimeBase tb = new TimeBase();
+        JsonObject content = new JsonObject();
+        content.addProperty("timestamp", timestamp);
+        tb.raw = content.toString();
+        tb.timestamp = timestamp;
+        return tb;
     }
 
     public static GroupNotification newGroupNotification(String text) {
@@ -145,6 +186,15 @@ public class IMessage {
     public static class Location extends MessageContent {
         public float latitude;
         public float longitude;
+        public String address;
+        public MessageType getType() { return MessageType.MESSAGE_LOCATION; }
+    }
+
+    public static class TimeBase extends MessageContent {
+        public int timestamp;
+        public MessageType getType() {
+            return MessageType.MESSAGE_TIME_BASE;
+        }
     }
 
     public static class GroupNotification extends MessageContent {
@@ -172,6 +222,14 @@ public class IMessage {
         public long member;
     }
 
+    public static class Attachment extends MessageContent {
+        public int msg_id;
+        public String address;
+
+        public MessageType getType() {
+            return MessageType.MESSAGE_ATTACHMENT;
+        }
+    }
 
     public static class Unknown extends MessageContent {}
 
@@ -186,6 +244,10 @@ public class IMessage {
                 content = gson.fromJson(element.get(AUDIO), Audio.class);
             } else if (element.has(NOTIFICATION)) {
                 content = newGroupNotification(element.get(NOTIFICATION).getAsString());
+            } else if (element.has(LOCATION)) {
+                content = gson.fromJson(element.get(LOCATION), Location.class);
+            } else if (element.has(ATTACHMENT)) {
+                content = gson.fromJson(element.get(ATTACHMENT), Attachment.class);
             } else {
                 content = new Unknown();
             }
@@ -205,6 +267,94 @@ public class IMessage {
     public long sender;
     public long receiver;
     public MessageContent content;
-    public int timestamp;
+    public int timestamp;//单位秒
 
+    private boolean uploading;
+    private boolean playing;
+    private boolean downloading;
+    private boolean geocoding;
+
+    private PropertyChangeSupport changeSupport = new PropertyChangeSupport(
+            this);
+
+    public void addPropertyChangeListener(PropertyChangeListener listener) {
+        changeSupport.addPropertyChangeListener(listener);
+    }
+
+    public void removePropertyChangeListener(PropertyChangeListener listener) {
+        changeSupport.removePropertyChangeListener(listener);
+    }
+
+    public void addPropertyChangeListener(String propertyName,
+                                          PropertyChangeListener listener) {
+        changeSupport.addPropertyChangeListener(propertyName, listener);
+    }
+
+    public void setUploading(boolean uploading) {
+        boolean old = this.uploading;
+        this.uploading = uploading;
+        changeSupport.firePropertyChange("uploading", old, this.uploading);
+    }
+
+    public boolean getUploading() {
+        return this.uploading;
+    }
+
+    public void setPlaying(boolean playing) {
+        boolean old = this.playing;
+        this.playing = playing;
+        changeSupport.firePropertyChange("playing", old, this.playing);
+    }
+
+    public boolean getPlaying() {
+        return this.playing;
+    }
+
+    public void setDownloading(boolean downloading) {
+        boolean old = this.downloading;
+        this.downloading = downloading;
+        changeSupport.firePropertyChange("downloading", old, this.downloading);
+    }
+
+    public boolean getDownloading() {
+        return this.downloading;
+    }
+
+    public boolean isFailure() {
+        return (flags & MessageFlag.MESSAGE_FLAG_FAILURE) != 0;
+    }
+
+    public void setFailure(boolean f) {
+        boolean old = isFailure();
+        if (f) {
+            flags = flags | MessageFlag.MESSAGE_FLAG_FAILURE;
+        } else {
+            flags = flags & (~MessageFlag.MESSAGE_FLAG_FAILURE);
+        }
+        changeSupport.firePropertyChange("failure", old, f);
+    }
+
+    public boolean isAck() {
+        return (flags & MessageFlag.MESSAGE_FLAG_ACK) != 0;
+    }
+
+    public void setAck(boolean ack) {
+        boolean old = isAck();
+        if (ack) {
+            flags = flags | MessageFlag.MESSAGE_FLAG_ACK;
+        } else {
+            flags = flags & (~MessageFlag.MESSAGE_FLAG_ACK);
+        }
+        changeSupport.firePropertyChange("ack", old, ack);
+    }
+
+    public boolean getGeocoding() {
+        return this.geocoding;
+    }
+
+    public void setGeocoding(boolean geocoding) {
+        boolean old = this.geocoding;
+        this.geocoding = geocoding;
+        changeSupport.firePropertyChange("geocoding", old, geocoding);
+    }
 }
