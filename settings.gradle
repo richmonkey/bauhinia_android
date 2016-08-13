@@ -1,3 +1,4 @@
+rootProject.name = 'Bauhinia'
 include ':app', ':imsdk', ':imkit', ':pushsdk', ':asynctcp'
 
 project(':pushsdk').projectDir = new File('im/pushsdk')
