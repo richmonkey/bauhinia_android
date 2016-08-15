@@ -1,10 +1,3 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- * @flow
- */
-
-
 'use strict';
 
 import React, { Component } from 'react';
@@ -15,18 +8,19 @@ import {
   Image,
   ListView,
   ScrollView,
-  Alert,
   TouchableHighlight,
+  ActionSheetIOS,
   ToastAndroid,
   View
 } from 'react-native';
 
-import Spinner from 'react-native-loading-spinner-overlay';
 import NavigationBar from 'react-native-navbar';
 import { NativeModules } from 'react-native';
+import Spinner from 'react-native-loading-spinner-overlay';
+var DialogAndroid = require('react-native-dialogs');
 
 
-var GroupMemberRemove = React.createClass({
+var GroupCreator = React.createClass({
   getInitialState: function() {
     var rowHasChanged = function (r1, r2) {
       return r1 !== r2;
@@ -40,72 +34,92 @@ var GroupMemberRemove = React.createClass({
     return {
       data:data,
       dataSource: ds.cloneWithRows(data),
+      visible:false,
     };
   },
 
-  removeMember: function(u) {
-    console.log("remove member:", u);
-    let url = this.props.url + "/groups/" + this.props.group_id + "/members/" + u.uid;
-    console.log("url:", url);
+  createGroup: function(users) {
+    var userIDs = [];
+    for (var i = 0; i < users.length; i++) {
+      userIDs.push(users[i].uid);
+      users[i].member_id = users[i].uid;
+    }
 
-    this.setState({visible:true});
+    if (userIDs.indexOf(this.props.uid) == -1) {
+      userIDs.push(this.props.uid);
+    }
 
+    var obj = {
+      master:this.props.uid, 
+      name:"", 
+      "super":false, 
+      members:userIDs
+    };
+
+    var url = this.props.url + "/groups";
+
+    this.showSpinner();
     fetch(url, {
-      method:"DELETE",  
+      method:"POST",  
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
         "Authorization": "Bearer " + this.props.token,
       },
+      body:JSON.stringify(obj),
     }).then((response) => {
       console.log("status:", response.status);
-      if (response.status == 200) {
-        this.setState({visible:false});
-        this.props.eventEmitter.emit("member_removed", {id:u.uid});
-        this.props.navigator.pop();
-      } else {
-        return response.json().then((responseJson)=>{
+
+      return response.json().then((responseJson)=>{
+        this.hideSpinner();
+        if (response.status == 200) {
+          console.log("response json:", responseJson);
+          console.log("group id:", responseJson.data.group_id);
+          let groupID = responseJson.data.group_id;
+          var groupCreator = NativeModules.GroupCreatorModule;
+          groupCreator.finishWithGroupID('' + groupID);
+        } else {
           console.log(responseJson.meta.message);
-          this.setState({visible:false});
           ToastAndroid.show(responseJson.meta.message, ToastAndroid.LONG);
-        });
-      }
+        }
+      });
+
     }).catch((error) => {
       console.log("error:", error);
-      this.setState({visible:false});
+      this.hideSpinner();
       ToastAndroid.show('' + error, ToastAndroid.LONG)
     });
   },
 
-  handleRemove: function() {
-    console.log("confirm");
-    var s = [];//selected group member
-    var users = this.state.data;
-    for (let i = 0; i < users.length; i++) {
-      let u = users[i];
+  handleCreate: function() {
+    var users = [];
+    var data = this.state.data;
+    for (var i = 0; i < data.length; i++) {
+      let u = data[i];
       if (u.selected) {
-        s.push(u);
+        users.push(u);
       }
     }
-
-    if (s.length == 0) {
+    if (users.length == 0) {
       return;
     }
+    this.createGroup(users);
+  },
 
-    let u = s[0];
-    var alertMessage = '确定要删除成员' + u.name + '?';
-    Alert.alert(
-      '',
-      alertMessage,
-      [
-        {text: '取消', onPress: () => console.log('Cancel Pressed!')},
-        {text: '确定', onPress: () => this.removeMember(u)},
-      ]
-    );
+  handleCancel: function() {
+    var groupCreator = NativeModules.GroupCreatorModule;
+    groupCreator.finish();
+  },
+
+  showSpinner: function() {
+    this.setState({visible:true});
+  },
+
+  hideSpinner: function() {
+    this.setState({visible:false});
   },
 
   render: function() {
-    console.log("render....");
     var renderRow = (rowData) => {
       var selectImage = () => {
         if (rowData.selected) {
@@ -126,27 +140,21 @@ var GroupMemberRemove = React.createClass({
       );
     }
 
-    var self = this;
-
     var leftButtonConfig = {
       title: '取消',
-      handler: function() {
-        self.props.navigator.pop();
-      }
+      handler: this.handleCancel,
     };
 
     var rightButtonConfig = {
-      title: '删除',
-      handler: this.handleRemove,
+      title: '确定',
+      handler: this.handleCreate,
     };
     var titleConfig = {
-      title: '删除成员',
+      title: '创建群组',
     };
 
-
-
     return (
-      <View style={{ flex: 1, backgroundColor:'#F5FCFF'}}>
+      <View style={{ flex:1, backgroundColor:"#F5FCFF" }}>
         <NavigationBar
             statusBar={{hidden:true}}
             style={{}}
@@ -160,6 +168,8 @@ var GroupMemberRemove = React.createClass({
             dataSource={this.state.dataSource}
             renderRow={renderRow}
         />
+
+        <Spinner visible={this.state.visible} />
       </View>
     );
   },
@@ -167,17 +177,7 @@ var GroupMemberRemove = React.createClass({
   rowPressed: function(rowData) {
     var data = this.state.data;
     var ds = this.state.dataSource;
-
     var newData = data.slice();
-
-    //select only one
-    for (var i = 0; i < newData.length; i++) {
-      if (i != rowData.id && newData[i].selected) {
-        let t = newData[i]
-        let t2 = {uid:t.uid, name:t.name, id:t.id, selected:false};
-        newData[i] = t2;
-      }
-    }
     var newRow = {uid:rowData.uid, name:rowData.name, id:rowData.id, selected:!rowData.selected};
     newData[rowData.id] = newRow;
     this.setState({data:newData, dataSource:ds.cloneWithRows(newData)});
@@ -192,6 +192,6 @@ const styles = StyleSheet.create({
   },
 });
 
-module.exports = GroupMemberRemove;
+AppRegistry.registerComponent('GroupCreator', () => GroupCreator);
 
 

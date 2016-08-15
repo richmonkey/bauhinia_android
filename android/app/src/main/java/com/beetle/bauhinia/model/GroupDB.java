@@ -157,4 +157,16 @@ public class GroupDB {
             return "";
         }
     }
+
+    public boolean setGroupTopic(long groupID, String name) {
+        LevelDB db = LevelDB.getDefaultDB();
+
+        String k3 = topicKey(groupID);
+        try {
+            db.set(k3, name);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

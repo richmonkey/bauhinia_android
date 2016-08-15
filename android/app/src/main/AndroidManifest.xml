@@ -72,15 +72,15 @@
         <activity
             android:name=".activity.PhotoActivity"
             android:label="@string/title_activity_photo"
-            android:theme="@style/imkit.ActionBar"></activity>
+            android:theme="@style/imkit.ActionBar" />
         <activity
             android:name=".MapActivity"
             android:label="位置"
-            android:theme="@style/imkit.ActionBar"></activity>
+            android:theme="@style/imkit.ActionBar" />
         <activity
             android:name=".LocationPickerActivity"
             android:label="位置"
-            android:theme="@style/imkit.ActionBar"></activity>
+            android:theme="@style/imkit.ActionBar" />
         <activity
             android:name=".AppGroupMessageActivity"
             android:exported="true"
@@ -139,8 +139,9 @@
 
         <activity
             android:name=".activity.VerifyActivity"
-            android:label="@string/title_activity_verify"></activity>
-        <activity android:name=".activity.GroupSettingActivity"></activity>
+            android:label="@string/title_activity_verify" />
+        <activity android:name=".activity.GroupSettingActivity" />
+        <activity android:name=".activity.GroupCreatorActivity"></activity>
     </application>
 
 </manifest>

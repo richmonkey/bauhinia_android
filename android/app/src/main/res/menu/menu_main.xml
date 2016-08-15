@@ -13,6 +13,11 @@
         app:showAsAction="never"
         />
 
+    <item android:id="@+id/action_new_group"
+        android:title="发起群聊"
+        app:showAsAction="never"
+        />
+
     <item android:id="@+id/action_qrcode"
         android:title="登录网页版"
         app:showAsAction="never"

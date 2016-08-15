@@ -33,6 +33,7 @@ import Spinner from 'react-native-loading-spinner-overlay';
 class GroupSetting extends Component {
   constructor(props) {
     super(props);
+    console.log("props:", this.props.members);
     this.state = {members:this.props.members, 
                   topic:this.props.topic, 
                   visible:false};
@@ -76,7 +77,7 @@ class GroupSetting extends Component {
     var members = this.state.members;
     for (var i = 0; i < members.length; i++) {
       let m = members[i];
-      if (m.member_id == id) {
+      if (m.uid == id) {
         members.splice(i, 1);
         break;
       }
@@ -109,6 +110,7 @@ class GroupSetting extends Component {
   showSpinner() {
     this.setState({visible:true});
   }
+
   hideSpinner() {
     this.setState({visible:false});
   }
@@ -117,7 +119,7 @@ class GroupSetting extends Component {
     var self = this;
     var rows = this.state.members.map(function(i) {
       return (
-        <View key={i.member_id} style={{alignItems:'center'}}>
+        <View key={i.uid} style={{alignItems:'center'}}>
           <TouchableHighlight underlayColor='gray' style={styles.headButton} onPress={self.handleClickMember.bind(self, i)} >
             <Image
                 source={require('./img/PersonalChat.png')}
@@ -229,7 +231,7 @@ class GroupSetting extends Component {
         let u = users[i];
 
         var index = self.state.members.findIndex((element, index, array) => {
-          return (element.member_id == u.uid);
+          return (element.uid == u.uid);
         });
         u.is_member = (index != -1);
         u.selected = false;
@@ -245,7 +247,7 @@ class GroupSetting extends Component {
     console.log("this.props:", this.props);
     console.log("i:", i);
     var GroupSettingViewControllerBridge = NativeModules.GroupSettingViewControllerBridge;
-    GroupSettingViewControllerBridge.handleClickMember(i.member_id);
+    GroupSettingViewControllerBridge.handleClickMember(i.uid);
   }
 
   quitGroup() {

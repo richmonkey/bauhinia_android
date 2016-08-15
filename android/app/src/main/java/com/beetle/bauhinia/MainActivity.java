@@ -16,6 +16,7 @@ import android.view.ViewGroup;
 import android.widget.*;
 import android.support.v7.widget.Toolbar;
 
+import com.beetle.bauhinia.activity.GroupCreatorActivity;
 import com.beetle.bauhinia.activity.ZBarActivity;
 import com.beetle.bauhinia.api.body.PostQRCode;
 import com.beetle.bauhinia.api.types.Version;
@@ -63,6 +64,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         ContactDB.ContactObserver, NotificationCenter.NotificationCenterObserver {
 
     private static final int QRCODE_SCAN_REQUEST = 100;
+    private static final int GROUP_CREATOR_RESULT = 101;
 
     List<Conversation> conversations;
 
@@ -167,6 +169,9 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             Intent intent = new Intent(MainActivity.this, ZBarActivity.class);
             startActivityForResult(intent, QRCODE_SCAN_REQUEST);
             return true;
+        } else if (id == R.id.action_new_group) {
+            Intent intent = new Intent(MainActivity.this, GroupCreatorActivity.class);
+            startActivityForResult(intent, GROUP_CREATOR_RESULT);
         }
         return super.onOptionsItemSelected(item);
     }
@@ -201,6 +206,20 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
                         }
                     });
 
+        } else if (requestCode == GROUP_CREATOR_RESULT && resultCode == RESULT_OK){
+            long group_id = data.getLongExtra("group_id", 0);
+            Log.i(TAG, "new group id:" + group_id);
+            if (group_id == 0) {
+                return;
+            }
+
+            String groupName = getGroupName(group_id);
+            Intent intent = new Intent(this, AppGroupMessageActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra("group_id", group_id);
+            intent.putExtra("group_name", groupName);
+            intent.putExtra("current_uid", Token.getInstance().uid);
+            startActivity(intent);
         }
     }
 
@@ -425,7 +444,51 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     private String getGroupName(long gid) {
         GroupDB db = GroupDB.getInstance();
-        return db.getGroupTopic(gid);
+        String topic = db.getGroupTopic(gid);
+        if (!TextUtils.isEmpty(topic)) {
+            return topic;
+        }
+
+
+        Group group = GroupDB.getInstance().loadGroup(gid);
+        if (group == null) {
+            return "";
+        }
+
+        ArrayList<Long> members = group.getMembers();
+
+        topic = "";
+        long loginUID = Token.getInstance().uid;
+        int count = 0;
+        for (Long uid : members) {
+            if (uid == loginUID) {
+                continue;
+            }
+
+            User u = UserDB.getInstance().loadUser(uid);
+
+            Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
+            if (c != null) {
+                u.name = c.displayName;
+            } else {
+                u.name = u.number;
+            }
+
+
+            if (topic.length() > 0) {
+                topic += ",";
+            }
+            topic += u.name;
+            count += 1;
+            if (count >= 3) {
+                break;
+            }
+        }
+
+        if (count < 3 && members.indexOf(loginUID) != -1) {
+            topic = "我" + (count > 0 ? "," : "") + topic;
+        }
+        return topic;
     }
 
     @Override
@@ -574,6 +637,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             onGroupMemberAdd(groupNotification);
         } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED) {
             onGroupMemberLeave(groupNotification);
+        } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_NAME_UPDATED) {
+            onGroupNameUpdate(groupNotification);
         } else {
             Log.i(TAG, "unknown notification");
             return;
@@ -593,6 +658,10 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             conversations.add(conv);
         }
         conv.message = imsg;
+
+        if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_NAME_UPDATED) {
+            conv.name = groupNotification.groupName;
+        }
         adapter.notifyDataSetChanged();
 
     }
@@ -620,6 +689,10 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     private void onGroupMemberLeave(IMessage.GroupNotification notification) {
         GroupDB.getInstance().removeGroupMember(notification.groupID, notification.member);
+    }
+
+    private void onGroupNameUpdate(IMessage.GroupNotification notification) {
+        GroupDB.getInstance().setGroupTopic(notification.groupID, notification.groupName);
     }
 
     private void updateNotificationDesc(IMessage imsg) {
