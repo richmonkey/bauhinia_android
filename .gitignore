@@ -1,6 +1,6 @@
 *~
 .gradle
-/local.properties
+/android/local.properties
 .DS_Store
 /build
 /imsdk/build
