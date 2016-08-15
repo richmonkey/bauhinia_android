@@ -604,6 +604,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         group.topic = notification.groupName;
         group.master = notification.master;
         group.disbanded = false;
+        group.setMembers(notification.members);
 
         db.addGroup(group);
     }
@@ -614,10 +615,11 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     }
 
     private void onGroupMemberAdd(IMessage.GroupNotification notification) {
+        GroupDB.getInstance().addGroupMember(notification.groupID, notification.member);
     }
 
     private void onGroupMemberLeave(IMessage.GroupNotification notification) {
-
+        GroupDB.getInstance().removeGroupMember(notification.groupID, notification.member);
     }
 
     private void updateNotificationDesc(IMessage imsg) {

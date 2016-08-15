@@ -1,5 +1,10 @@
 rootProject.name = 'Bauhinia'
-include ':app', ':imsdk', ':imkit', ':pushsdk', ':asynctcp'
+include ':app', ':imsdk', ':imkit', ':pushsdk', ':asynctcp', ':react-native-dialogs'
+
+
+project(':react-native-dialogs').projectDir = file('../node_modules/react-native-dialogs/android')
+
+
 
 project(':pushsdk').projectDir = new File('im/pushsdk')
 project(':asynctcp').projectDir = new File('im/asynctcp')
