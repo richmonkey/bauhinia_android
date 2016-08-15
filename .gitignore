@@ -2,9 +2,10 @@
 .gradle
 /android/local.properties
 .DS_Store
-/build
+/android/build
 /imsdk/build
 /imkit/build
-/.idea
+/android/.idea
 *.iml
 /gen
+/node_modules
