@@ -62,12 +62,25 @@ public class IMService {
     private String token;
     private String deviceID;
     private long uid;
+    private long appID;
+
+    private long roomID;
 
     PeerMessageHandler peerMessageHandler;
     GroupMessageHandler groupMessageHandler;
+    CustomerMessageHandler customerMessageHandler;
     ArrayList<IMServiceObserver> observers = new ArrayList<IMServiceObserver>();
+    ArrayList<GroupMessageObserver> groupObservers = new ArrayList<GroupMessageObserver>();
+    ArrayList<PeerMessageObserver> peerObservers = new ArrayList<PeerMessageObserver>();
+    ArrayList<SystemMessageObserver> systemMessageObservers = new ArrayList<SystemMessageObserver>();
+    ArrayList<CustomerMessageObserver> customerServiceMessageObservers = new ArrayList<CustomerMessageObserver>();
+    ArrayList<VOIPObserver> voipObservers = new ArrayList<VOIPObserver>();
+    ArrayList<RTMessageObserver> rtMessageObservers = new ArrayList<RTMessageObserver>();
+    ArrayList<RoomMessageObserver> roomMessageObservers = new ArrayList<RoomMessageObserver>();
+
     HashMap<Integer, IMMessage> peerMessages = new HashMap<Integer, IMMessage>();
     HashMap<Integer, IMMessage> groupMessages = new HashMap<Integer, IMMessage>();
+    HashMap<Integer, CustomerMessage> customerMessages = new HashMap<Integer, CustomerMessage>();
 
     private byte[] data;
 
@@ -96,44 +109,51 @@ public class IMService {
         this.port = PORT;
     }
 
+    private boolean isOnNet(Context context) {
+        if (null == context) {
+            Log.e("", "context is null");
+            return false;
+        }
+        boolean isOnNet = false;
+        ConnectivityManager connectivityManager = (ConnectivityManager) context
+                .getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetInfo = connectivityManager.getActiveNetworkInfo();
+        if (null != activeNetInfo) {
+            isOnNet = activeNetInfo.isConnected();
+            Log.i(TAG, "active net info:" + activeNetInfo);
+        }
+        return isOnNet;
+    }
+
+    class NetworkReceiver extends BroadcastReceiver {
+        @Override
+        public void onReceive (Context context, Intent intent) {
+            if (isOnNet(context)) {
+                Log.i(TAG, "connectivity status:on");
+                IMService.this.reachable = true;
+                if (!IMService.this.stopped && !IMService.this.isBackground) {
+                    //todo 优化 可以判断当前连接的socket的localip和当前网络的ip是一样的情况下
+                    //就没有必要重连socket
+                    Log.i(TAG, "reconnect im service");
+                    IMService.this.suspend();
+                    IMService.this.resume();
+                }
+            } else {
+                Log.i(TAG, "connectivity status:off");
+                IMService.this.reachable = false;
+                if (!IMService.this.stopped) {
+                    IMService.this.suspend();
+                }
+            }
+        }
+    };
+
     public void registerConnectivityChangeReceiver(Context context) {
-        class NetworkReceiver extends BroadcastReceiver {
-            @Override
-            public void onReceive (Context context, Intent intent) {
-                if (isOnNet(context)) {
-                    Log.i(TAG, "connectivity status:on");
-                    if (!IMService.this.stopped && !IMService.this.isBackground) {
-                        Log.i(TAG, "reconnect");
-                        IMService.this.resume();
-                    }
-                } else {
-                    Log.i(TAG, "connectivity status:on");
-                    if (!IMService.this.stopped) {
-                        IMService.this.suspend();
-                    }
-                }
-            }
-            boolean isOnNet(Context context) {
-                if (null == context) {
-                    Log.e("", "context is null");
-                    return false;
-                }
-                boolean isOnNet = false;
-                ConnectivityManager connectivityManager = (ConnectivityManager) context
-                        .getSystemService(Context.CONNECTIVITY_SERVICE);
-                NetworkInfo activeNetInfo = connectivityManager.getActiveNetworkInfo();
-                if (null != activeNetInfo) {
-                    isOnNet = activeNetInfo.isConnected();
-                }
-                return isOnNet;
-            }
-
-        };
-
         NetworkReceiver  receiver = new NetworkReceiver();
         IntentFilter filter = new IntentFilter();
         filter.addAction("android.net.conn.CONNECTIVITY_CHANGE");
         context.registerReceiver(receiver, filter);
+        this.reachable = isOnNet(context);
     }
 
     public ConnectState getConnectState() {
@@ -147,6 +167,8 @@ public class IMService {
         this.token = token;
     }
     public void setUID(long uid) { this.uid = uid; }
+    //普通app不需要设置
+    public void setAppID(long appID) { this.appID = appID; }
     public void setDeviceID(String deviceID) {
         this.deviceID = deviceID;
     }
@@ -156,6 +178,9 @@ public class IMService {
     }
     public void setGroupMessageHandler(GroupMessageHandler handler) {
         this.groupMessageHandler = handler;
+    }
+    public void setCustomerMessageHandler(CustomerMessageHandler handler) {
+        this.customerMessageHandler = handler;
     }
 
     public void addObserver(IMServiceObserver ob) {
@@ -169,6 +194,84 @@ public class IMService {
         observers.remove(ob);
     }
 
+
+    public void addPeerObserver(PeerMessageObserver ob) {
+        if (peerObservers.contains(ob)) {
+            return;
+        }
+        peerObservers.add(ob);
+    }
+
+    public void removePeerObserver(PeerMessageObserver ob) {
+        peerObservers.remove(ob);
+    }
+
+    public void addGroupObserver(GroupMessageObserver ob) {
+        if (groupObservers.contains(ob)) {
+            return;
+        }
+        groupObservers.add(ob);
+    }
+
+    public void removeGroupObserver(GroupMessageObserver ob) {
+        groupObservers.remove(ob);
+    }
+
+    public void addSystemObserver(SystemMessageObserver ob) {
+        if (systemMessageObservers.contains(ob)) {
+            return;
+        }
+        systemMessageObservers.add(ob);
+    }
+
+    public void removeSystemObserver(SystemMessageObserver ob) {
+        systemMessageObservers.remove(ob);
+    }
+
+    public void addCustomerServiceObserver(CustomerMessageObserver ob) {
+        if (customerServiceMessageObservers.contains(ob)) {
+            return;
+        }
+        customerServiceMessageObservers.add(ob);
+    }
+
+    public void removeCustomerServiceObserver(CustomerMessageObserver ob) {
+        customerServiceMessageObservers.remove(ob);
+    }
+
+    public void addRTObserver(RTMessageObserver ob) {
+        if (rtMessageObservers.contains(ob)) {
+            return;
+        }
+        rtMessageObservers.add(ob);
+    }
+
+    public void removeRTObserver(RTMessageObserver ob){
+        rtMessageObservers.remove(ob);
+    }
+
+    public void addRoomObserver(RoomMessageObserver ob) {
+        if (roomMessageObservers.contains(ob)) {
+            return;
+        }
+        roomMessageObservers.add(ob);
+    }
+
+    public void removeRoomObserver(RoomMessageObserver ob) {
+        roomMessageObservers.remove(ob);
+    }
+
+    public void pushVOIPObserver(VOIPObserver ob) {
+        if (voipObservers.contains(ob)) {
+            return;
+        }
+        voipObservers.add(ob);
+    }
+
+    public void popVOIPObserver(VOIPObserver ob) {
+        voipObservers.remove(ob);
+    }
+
     public void enterBackground() {
         Log.i(TAG, "im service enter background");
         this.isBackground = true;
@@ -180,7 +283,7 @@ public class IMService {
     public void enterForeground() {
         Log.i(TAG, "im service enter foreground");
         this.isBackground = false;
-        if (!this.stopped && this.reachable) {
+        if (!this.stopped) {
             resume();
         }
     }
@@ -196,9 +299,8 @@ public class IMService {
         }
         Log.i(TAG, "start im service");
         this.stopped = false;
-        if (this.reachable) {
-            this.resume();
-        }
+        this.resume();
+
         //应用在后台的情况下基本不太可能调用start
         if (this.isBackground) {
             Log.w(TAG, "start im service when app is background");
@@ -220,12 +322,12 @@ public class IMService {
             Log.i(TAG, "suspended");
             return;
         }
-        Log.i(TAG, "suspend im service");
-        this.suspended = true;
-
+        this.close();
         heartbeatTimer.suspend();
         connectTimer.suspend();
-        this.close();
+        this.suspended = true;
+
+        Log.i(TAG, "suspend im service");
     }
 
     private void resume() {
@@ -240,6 +342,46 @@ public class IMService {
 
         heartbeatTimer.setTimer(uptimeMillis(), HEARTBEAT*1000);
         heartbeatTimer.resume();
+    }
+
+    public boolean isPeerMessageSending(long peer, int msgLocalID) {
+        for(Map.Entry<Integer, IMMessage> entry : peerMessages.entrySet()) {
+            IMMessage m = entry.getValue();
+            if (m.receiver == peer && m.msgLocalID == msgLocalID) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isGroupMessageSending(long groupID, int msgLocalID) {
+        for(Map.Entry<Integer, IMMessage> entry : groupMessages.entrySet()) {
+            IMMessage m = entry.getValue();
+            if (m.receiver == groupID && m.msgLocalID == msgLocalID) {
+                return true;
+            }
+        }
+        return false;
+    }
+    public boolean isCustomerMessageSending(long storeID, int msgLocalID) {
+        for(Map.Entry<Integer, CustomerMessage> entry : customerMessages.entrySet()) {
+            CustomerMessage m = entry.getValue();
+            if (m.storeID == storeID && m.msgLocalID == msgLocalID) {
+                return true;
+            }
+        }
+        return false;
+    }
+    public boolean isCustomerSupportMessageSending(long customerID, long customerAppID, int msgLocalID) {
+        for(Map.Entry<Integer, CustomerMessage> entry : customerMessages.entrySet()) {
+            CustomerMessage m = entry.getValue();
+            if (m.customerID == customerID &&
+                    m.customerAppID == customerAppID &&
+                    m.msgLocalID == msgLocalID) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean sendPeerMessage(IMMessage im) {
@@ -266,25 +408,123 @@ public class IMService {
         return true;
     }
 
+    public boolean sendCustomerMessage(CustomerMessage im) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_CUSTOMER;
+        msg.body = im;
+        if (!sendMessage(msg)) {
+            return false;
+        }
+
+        customerMessages.put(new Integer(msg.seq), im);
+        return true;
+    }
+
+    public boolean sendCustomerSupportMessage(CustomerMessage im) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_CUSTOMER_SUPPORT;
+        msg.body = im;
+        if (!sendMessage(msg)) {
+            return false;
+        }
+
+        customerMessages.put(new Integer(msg.seq), im);
+        return true;
+    }
+
+    public boolean sendRTMessage(RTMessage rt) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_RT;
+        msg.body = rt;
+        if (!sendMessage(msg)) {
+            return false;
+        }
+        return true;
+    }
+
+    public boolean sendVOIPControl(VOIPControl ctl) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_VOIP_CONTROL;
+        msg.body = ctl;
+        return sendMessage(msg);
+    }
+
+    public boolean sendRoomMessage(RoomMessage rm) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_ROOM_IM;
+        msg.body = rm;
+        return sendMessage(msg);
+    }
+
+    private void sendEnterRoom(long roomID) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_ENTER_ROOM;
+        msg.body = new Long(roomID);
+        sendMessage(msg);
+    }
+
+    private void sendLeaveRoom(long roomID) {
+        Message msg = new Message();
+        msg.cmd = Command.MSG_LEAVE_ROOM;
+        msg.body = new Long(roomID);
+        sendMessage(msg);
+    }
+
+    public void enterRoom(long roomID) {
+        if (roomID == 0) {
+            return;
+        }
+        this.roomID = roomID;
+        sendEnterRoom(roomID);
+    }
+
+    public void leaveRoom(long roomID) {
+        if (this.roomID != roomID || roomID == 0) {
+            return;
+        }
+        sendLeaveRoom(roomID);
+        this.roomID = 0;
+    }
+
     private void close() {
+        Iterator iter = peerMessages.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<Integer, IMMessage> entry = (Map.Entry<Integer, IMMessage>)iter.next();
+            IMMessage im = entry.getValue();
+            if (peerMessageHandler != null) {
+                peerMessageHandler.handleMessageFailure(im.msgLocalID, im.receiver);
+            }
+            publishPeerMessageFailure(im.msgLocalID, im.receiver);
+        }
+        peerMessages.clear();
+
+        iter = groupMessages.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<Integer, IMMessage> entry = (Map.Entry<Integer, IMMessage>)iter.next();
+            IMMessage im = entry.getValue();
+            if (groupMessageHandler != null) {
+                groupMessageHandler.handleMessageFailure(im.msgLocalID, im.receiver);
+            }
+            publishGroupMessageFailure(im.msgLocalID, im.receiver);
+        }
+        groupMessages.clear();
+
+        iter = customerMessages.entrySet().iterator();
+        while (iter.hasNext()) {
+            Map.Entry<Integer, CustomerMessage> entry = (Map.Entry<Integer, CustomerMessage>)iter.next();
+            CustomerMessage im = entry.getValue();
+            if (customerMessageHandler != null) {
+                customerMessageHandler.handleMessageFailure(im);
+            }
+            publishCustomerServiceMessageFailure(im);
+        }
+        customerMessages.clear();
+
         if (this.tcp != null) {
             Log.i(TAG, "close tcp");
             this.tcp.close();
             this.tcp = null;
         }
-        if (this.stopped) {
-            return;
-        }
-
-        Log.d(TAG, "start connect timer");
-
-        long t;
-        if (this.connectFailCount > 60) {
-            t = uptimeMillis() + 60*1000;
-        } else {
-            t = uptimeMillis() + this.connectFailCount*1000;
-        }
-        connectTimer.setTimer(t);
     }
 
     public static int now() {
@@ -321,6 +561,20 @@ public class IMService {
         }.execute();
     }
 
+    private void startConnectTimer() {
+        if (this.stopped || this.suspended || this.isBackground) {
+            return;
+        }
+        long t;
+        if (this.connectFailCount > 60) {
+            t = uptimeMillis() + 60*1000;
+        } else {
+            t = uptimeMillis() + this.connectFailCount*1000;
+        }
+        connectTimer.setTimer(t);
+        Log.d(TAG, "start connect timer:" + this.connectFailCount);
+    }
+
     private void connect() {
         if (this.tcp != null) {
             return;
@@ -337,6 +591,8 @@ public class IMService {
 
             long t;
             if (this.connectFailCount > 60) {
+
+
                 t = uptimeMillis() + 60*1000;
             } else {
                 t = uptimeMillis() + this.connectFailCount*1000;
@@ -349,6 +605,7 @@ public class IMService {
             refreshHost();
         }
 
+        this.pingTimestamp = 0;
         this.connectState = ConnectState.STATE_CONNECTING;
         IMService.this.publishConnectState();
         this.tcp = new AsyncTCP();
@@ -363,12 +620,16 @@ public class IMService {
                     IMService.this.connectState = ConnectState.STATE_CONNECTFAIL;
                     IMService.this.publishConnectState();
                     IMService.this.close();
+                    IMService.this.startConnectTimer();
                 } else {
                     Log.i(TAG, "tcp connected");
                     IMService.this.connectFailCount = 0;
                     IMService.this.connectState = ConnectState.STATE_CONNECTED;
                     IMService.this.publishConnectState();
                     IMService.this.sendAuth();
+                    if (IMService.this.roomID > 0) {
+                        IMService.this.sendEnterRoom(IMService.this.roomID);
+                    }
                     IMService.this.tcp.startRead();
                 }
             }
@@ -378,10 +639,12 @@ public class IMService {
             @Override
             public void onRead(Object tcp, byte[] data) {
                 if (data.length == 0) {
+                    Log.i(TAG, "tcp read eof");
                     IMService.this.connectState = ConnectState.STATE_UNCONNECTED;
                     IMService.this.publishConnectState();
                     IMService.this.handleClose();
                 } else {
+                    IMService.this.pingTimestamp = 0;
                     boolean b = IMService.this.handleData(data);
                     if (!b) {
                         IMService.this.connectState = ConnectState.STATE_UNCONNECTED;
@@ -399,15 +662,7 @@ public class IMService {
             IMService.this.connectFailCount++;
             IMService.this.connectState = ConnectState.STATE_CONNECTFAIL;
             publishConnectState();
-            Log.d(TAG, "start connect timer");
-
-            long t;
-            if (this.connectFailCount > 60) {
-                t = uptimeMillis() + 60*1000;
-            } else {
-                t = uptimeMillis() + this.connectFailCount*1000;
-            }
-            connectTimer.setTimer(t);
+            startConnectTimer();
         }
     }
 
@@ -420,6 +675,7 @@ public class IMService {
             this.connectState = ConnectState.STATE_UNCONNECTED;
             this.publishConnectState();
             this.close();
+            this.startConnectTimer();
         }
     }
 
@@ -428,12 +684,12 @@ public class IMService {
         Log.d(TAG, "im message sender:" + im.sender + " receiver:" + im.receiver + " content:" + im.content);
 
         if (im.sender == this.uid) {
-            if (!peerMessageHandler.handleMessage(im, im.receiver)) {
+            if (peerMessageHandler != null && !peerMessageHandler.handleMessage(im, im.receiver)) {
                 Log.i(TAG, "handle im message fail");
                 return;
             }
         } else {
-            if (!peerMessageHandler.handleMessage(im, im.sender)) {
+            if (peerMessageHandler != null && !peerMessageHandler.handleMessage(im, im.sender)) {
                 Log.i(TAG, "handle im message fail");
                 return;
             }
@@ -493,32 +749,10 @@ public class IMService {
         sendMessage(ack);
 
     }
+
     private void handleClose() {
-        Iterator iter = peerMessages.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<Integer, IMMessage> entry = (Map.Entry<Integer, IMMessage>)iter.next();
-            IMMessage im = entry.getValue();
-            if (peerMessageHandler != null) {
-                peerMessageHandler.handleMessageFailure(im.msgLocalID, im.receiver);
-            }
-            publishPeerMessageFailure(im.msgLocalID, im.receiver);
-        }
-
-
-        peerMessages.clear();
-
-        iter = groupMessages.entrySet().iterator();
-        while (iter.hasNext()) {
-            Map.Entry<Integer, IMMessage> entry = (Map.Entry<Integer, IMMessage>)iter.next();
-            IMMessage im = entry.getValue();
-            if (groupMessageHandler != null) {
-                groupMessageHandler.handleMessageFailure(im.msgLocalID, im.receiver);
-            }
-            publishGroupMessageFailure(im.msgLocalID, im.receiver);
-        }
-        groupMessages.clear();
-
         close();
+        startConnectTimer();
     }
 
     private void handleACK(Message msg) {
@@ -543,17 +777,109 @@ public class IMService {
             groupMessages.remove(seq);
             publishGroupMessageACK(im.msgLocalID, im.receiver);
         }
-    }
 
-    private void handlePeerACK(Message msg) {
-        return;
+        CustomerMessage cm = customerMessages.get(seq);
+        if (cm != null) {
+            if (customerMessageHandler != null && !customerMessageHandler.handleMessageACK(cm)) {
+                Log.i(TAG, "handle customer service message ack fail");
+                return;
+            }
+            customerMessages.remove(seq);
+            publishCustomerServiceMessageACK(cm);
+        }
     }
 
     private void handleInputting(Message msg) {
         MessageInputing inputting = (MessageInputing)msg.body;
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
+        for (int i = 0; i < peerObservers.size(); i++ ) {
+            PeerMessageObserver ob = peerObservers.get(i);
             ob.onPeerInputting(inputting.sender);
+        }
+    }
+
+    private void handleSystemMessage(Message msg) {
+        String sys = (String)msg.body;
+        for (int i = 0; i < systemMessageObservers.size(); i++ ) {
+            SystemMessageObserver ob = systemMessageObservers.get(i);
+            ob.onSystemMessage(sys);
+        }
+
+        Message ack = new Message();
+        ack.cmd = Command.MSG_ACK;
+        ack.body = new Integer(msg.seq);
+        sendMessage(ack);
+    }
+
+    private void handleCustomerMessage(Message msg) {
+        CustomerMessage cs = (CustomerMessage)msg.body;
+        if (customerMessageHandler != null && !customerMessageHandler.handleMessage(cs)) {
+            Log.i(TAG, "handle customer service message fail");
+            return;
+        }
+
+        publishCustomerMessage(cs);
+
+        Message ack = new Message();
+        ack.cmd = Command.MSG_ACK;
+        ack.body = new Integer(msg.seq);
+        sendMessage(ack);
+
+        if ((this.appID == 0 || this.appID == cs.customerAppID) && this.uid == cs.customerID) {
+            if (customerMessageHandler != null && !customerMessageHandler.handleMessageACK(cs)) {
+                Log.w(TAG, "handle customer service message ack fail");
+                return;
+            }
+            publishCustomerServiceMessageACK(cs);
+        }
+    }
+
+    private void handleCustomerSupportMessage(Message msg) {
+        CustomerMessage cs = (CustomerMessage)msg.body;
+        if (customerMessageHandler != null && !customerMessageHandler.handleCustomerSupportMessage(cs)) {
+            Log.i(TAG, "handle customer service message fail");
+            return;
+        }
+
+        publishCustomerSupportMessage(cs);
+
+        Message ack = new Message();
+        ack.cmd = Command.MSG_ACK;
+        ack.body = new Integer(msg.seq);
+        sendMessage(ack);
+
+        if (this.appID > 0 && this.appID != cs.customerAppID && this.uid == cs.sellerID) {
+            if (customerMessageHandler != null && !customerMessageHandler.handleMessageACK(cs)) {
+                Log.w(TAG, "handle customer service message ack fail");
+                return;
+            }
+            publishCustomerServiceMessageACK(cs);
+        }
+    }
+
+    private void handleRTMessage(Message msg) {
+        RTMessage rt = (RTMessage)msg.body;
+        for (int i = 0; i < rtMessageObservers.size(); i++ ) {
+            RTMessageObserver ob = rtMessageObservers.get(i);
+            ob.onRTMessage(rt);
+        }
+    }
+
+    private void handleVOIPControl(Message msg) {
+        VOIPControl ctl = (VOIPControl)msg.body;
+
+        int count = voipObservers.size();
+        if (count == 0) {
+            return;
+        }
+        VOIPObserver ob = voipObservers.get(count-1);
+        ob.onVOIPControl(ctl);
+    }
+
+    private void handleRoomMessage(Message msg) {
+        RoomMessage rm = (RoomMessage)msg.body;
+        for (int i= 0; i < roomMessageObservers.size(); i++) {
+            RoomMessageObserver ob = roomMessageObservers.get(i);
+            ob.onRoomMessage(rm);
         }
     }
 
@@ -561,19 +887,14 @@ public class IMService {
         this.pingTimestamp = 0;
     }
 
-    private void handleLoginPoint(Message msg) {
-        publishLoginPoint((LoginPoint) msg.body);
-    }
-
     private void handleMessage(Message msg) {
+        Log.i(TAG, "message cmd:" + msg.cmd);
         if (msg.cmd == Command.MSG_AUTH_STATUS) {
             handleAuthStatus(msg);
         } else if (msg.cmd == Command.MSG_IM) {
             handleIMMessage(msg);
         } else if (msg.cmd == Command.MSG_ACK) {
             handleACK(msg);
-        } else if (msg.cmd == Command.MSG_PEER_ACK) {
-            handlePeerACK(msg);
         } else if (msg.cmd == Command.MSG_INPUTTING) {
             handleInputting(msg);
         } else if (msg.cmd == Command.MSG_PONG) {
@@ -582,8 +903,18 @@ public class IMService {
             handleGroupIMMessage(msg);
         } else if (msg.cmd == Command.MSG_GROUP_NOTIFICATION) {
             handleGroupNotification(msg);
-        } else if (msg.cmd == Command.MSG_LOGIN_POINT) {
-            handleLoginPoint(msg);
+        } else if (msg.cmd == Command.MSG_SYSTEM) {
+            handleSystemMessage(msg);
+        } else if (msg.cmd == Command.MSG_RT) {
+            handleRTMessage(msg);
+        } else if (msg.cmd == Command.MSG_VOIP_CONTROL) {
+            handleVOIPControl(msg);
+        } else if (msg.cmd == Command.MSG_CUSTOMER) {
+            handleCustomerMessage(msg);
+        } else if (msg.cmd == Command.MSG_CUSTOMER_SUPPORT) {
+            handleCustomerSupportMessage(msg);
+        } else if (msg.cmd == Command.MSG_ROOM_IM) {
+            handleRoomMessage(msg);
         } else {
             Log.i(TAG, "unknown message cmd:"+msg.cmd);
         }
@@ -645,17 +976,28 @@ public class IMService {
     }
 
     private void sendHeartbeat() {
-        if (this.pingTimestamp > 0 && now() - this.pingTimestamp > 60) {
-            Log.i(TAG, "ping timeout");
-            handleClose();
-            return;
-        }
         Log.i(TAG, "send ping");
         Message msg = new Message();
         msg.cmd = Command.MSG_PING;
         boolean r = sendMessage(msg);
         if (r && this.pingTimestamp == 0) {
             this.pingTimestamp = now();
+
+            Timer t = new Timer() {
+                @Override
+                protected void fire() {
+                    int now = now();
+                    //3s未收到pong
+                    if (pingTimestamp > 0 && now - pingTimestamp >= 3) {
+                        Log.i(TAG, "ping timeout");
+                        handleClose();
+                        return;
+                    }
+                }
+            };
+
+            t.setTimer(uptimeMillis()+1000*3+100);
+            t.resume();
         }
     }
 
@@ -664,6 +1006,10 @@ public class IMService {
         this.seq++;
         msg.seq = this.seq;
         byte[] p = msg.pack();
+        if (p.length >= 32*1024) {
+            Log.e(TAG, "message length overflow");
+            return false;
+        }
         int l = p.length - Message.HEAD_SIZE;
         byte[] buf = new byte[p.length + 4];
         BytePacket.writeInt32(l, buf, 0);
@@ -673,51 +1019,51 @@ public class IMService {
     }
 
     private void publishGroupNotification(String notification) {
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
+        for (int i = 0; i < groupObservers.size(); i++ ) {
+            GroupMessageObserver ob = groupObservers.get(i);
             ob.onGroupNotification(notification);
         }
     }
 
     private void publishGroupMessage(IMMessage msg) {
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
+        for (int i = 0; i < groupObservers.size(); i++ ) {
+            GroupMessageObserver ob = groupObservers.get(i);
             ob.onGroupMessage(msg);
         }
     }
 
     private void publishGroupMessageACK(int msgLocalID, long gid) {
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
+        for (int i = 0; i < groupObservers.size(); i++ ) {
+            GroupMessageObserver ob = groupObservers.get(i);
             ob.onGroupMessageACK(msgLocalID, gid);
         }
     }
 
 
     private void publishGroupMessageFailure(int msgLocalID, long gid) {
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
+        for (int i = 0; i < groupObservers.size(); i++ ) {
+            GroupMessageObserver ob = groupObservers.get(i);
             ob.onGroupMessageFailure(msgLocalID, gid);
         }
     }
 
     private void publishPeerMessage(IMMessage msg) {
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
+        for (int i = 0; i < peerObservers.size(); i++ ) {
+            PeerMessageObserver ob = peerObservers.get(i);
             ob.onPeerMessage(msg);
         }
     }
 
     private void publishPeerMessageACK(int msgLocalID, long uid) {
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
+        for (int i = 0; i < peerObservers.size(); i++ ) {
+            PeerMessageObserver ob = peerObservers.get(i);
             ob.onPeerMessageACK(msgLocalID, uid);
         }
     }
 
     private void publishPeerMessageFailure(int msgLocalID, long uid) {
-        for (int i = 0; i < observers.size(); i++ ) {
-            IMServiceObserver ob = observers.get(i);
+        for (int i = 0; i < peerObservers.size(); i++ ) {
+            PeerMessageObserver ob = peerObservers.get(i);
             ob.onPeerMessageFailure(msgLocalID, uid);
         }
     }
@@ -729,10 +1075,32 @@ public class IMService {
         }
     }
 
-    private void publishLoginPoint(final LoginPoint lp) {
-        for (int i = 0; i < observers.size(); i++) {
-            IMServiceObserver ob = observers.get(i);
-            ob.onLoginPoint(lp);
+    private void publishCustomerMessage(CustomerMessage cs) {
+        for (int i = 0; i < customerServiceMessageObservers.size(); i++) {
+            CustomerMessageObserver ob = customerServiceMessageObservers.get(i);
+            ob.onCustomerMessage(cs);
+        }
+    }
+
+    private void publishCustomerSupportMessage(CustomerMessage cs) {
+        for (int i = 0; i < customerServiceMessageObservers.size(); i++) {
+            CustomerMessageObserver ob = customerServiceMessageObservers.get(i);
+            ob.onCustomerSupportMessage(cs);
+        }
+    }
+
+    private void publishCustomerServiceMessageACK(CustomerMessage msg) {
+        for (int i = 0; i < customerServiceMessageObservers.size(); i++) {
+            CustomerMessageObserver ob = customerServiceMessageObservers.get(i);
+            ob.onCustomerMessageACK(msg);
+        }
+    }
+
+
+    private void publishCustomerServiceMessageFailure(CustomerMessage msg) {
+        for (int i = 0; i < customerServiceMessageObservers.size(); i++) {
+            CustomerMessageObserver ob = customerServiceMessageObservers.get(i);
+            ob.onCustomerMessageFailure(msg);
         }
     }
 }

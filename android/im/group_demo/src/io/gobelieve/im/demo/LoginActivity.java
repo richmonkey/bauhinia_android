@@ -59,25 +59,6 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
         IMService.getInstance().setUID(sender);
         IMService.getInstance().start();
 
-        IMDemoApplication app = (IMDemoApplication)getApplication();
-        String deviceToken = app.getDeviceToken();
-        if (token != null && deviceToken != null && deviceToken.length() > 0) {
-            PostDeviceToken tokenBody = new PostDeviceToken();
-            tokenBody.xgDeviceToken = deviceToken;
-            IMHttpAPI.Singleton().bindDeviceToken(tokenBody)
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new Action1<Object>() {
-                        @Override
-                        public void call(Object obj) {
-                            Log.i("im", "bind success");
-                        }
-                    }, new Action1<Throwable>() {
-                        @Override
-                        public void call(Throwable throwable) {
-                            Log.i("im", "bind fail");
-                        }
-                    });
-        }
 
         Intent intent = new Intent(this, AppGroupMessageActivity.class);
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
@@ -139,10 +120,9 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
     }
 
     private String login(long uid) {
-        //调用app自身的登陆接口获取im服务必须的access token,之后可将token保存在本地供下次直接登录IM服务,此URL为新游提供的Demo授权接口
+        //调用app自身的登陆接口获取im服务必须的access token,之后可将token保存在本地供下次直接登录IM服务
         //sandbox地址: "http://sandbox.demo.gobelieve.io"
         String URL = "http://demo.gobelieve.io";
-
         String uri = String.format("%s/auth/token", URL);
         try {
             HttpClient getClient = new DefaultHttpClient();

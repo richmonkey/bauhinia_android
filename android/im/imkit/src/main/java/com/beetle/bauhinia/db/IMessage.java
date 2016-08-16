@@ -1,5 +1,6 @@
 package com.beetle.bauhinia.db;
 
+import com.beetle.im.BytePacket;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -8,6 +9,7 @@ import com.google.gson.JsonObject;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
+import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Iterator;
 
@@ -23,6 +25,7 @@ public class IMessage {
     public static final String LOCATION = "location";
     public static final String AUDIO = "audio";
     public static final String NOTIFICATION = "notification";
+    public static final String LINK = "link";
     public static final String ATTACHMENT = "attachment";
     public static final String TIMEBASE = "timebase";
 
@@ -33,6 +36,7 @@ public class IMessage {
         MESSAGE_IMAGE,
         MESSAGE_LOCATION,
         MESSAGE_GROUP_NOTIFICATION,
+        MESSAGE_LINK,
         MESSAGE_ATTACHMENT,
         MESSAGE_TIME_BASE //虚拟的消息，不会存入磁盘
     }
@@ -120,6 +124,7 @@ public class IMessage {
         if (element.has("create")) {
             JsonObject obj = element.getAsJsonObject("create");
             notification.groupID = obj.get("group_id").getAsLong();
+            notification.timestamp = obj.get("timestamp").getAsInt();
             notification.master = obj.get("master").getAsLong();
             notification.groupName = obj.get("name").getAsString();
 
@@ -129,21 +134,24 @@ public class IMessage {
             while (iter.hasNext()) {
                 notification.members.add(iter.next().getAsLong());
             }
-            notification.type = GroupNotification.NOTIFICATION_GROUP_CREATED;
+            notification.notificationType = GroupNotification.NOTIFICATION_GROUP_CREATED;
         } else if (element.has("disband")) {
             JsonObject obj = element.getAsJsonObject("disband");
             notification.groupID = obj.get("group_id").getAsLong();
-            notification.type = GroupNotification.NOTIFICATION_GROUP_DISBAND;
+            notification.timestamp = obj.get("timestamp").getAsInt();
+            notification.notificationType = GroupNotification.NOTIFICATION_GROUP_DISBAND;
         } else if (element.has("quit_group")) {
             JsonObject obj = element.getAsJsonObject("quit_group");
             notification.groupID = obj.get("group_id").getAsLong();
+            notification.timestamp = obj.get("timestamp").getAsInt();
             notification.member = obj.get("member_id").getAsLong();
-            notification.type = GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED;
+            notification.notificationType = GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED;
         } else if (element.has("add_member")) {
             JsonObject obj = element.getAsJsonObject("add_member");
             notification.groupID = obj.get("group_id").getAsLong();
+            notification.timestamp = obj.get("timestamp").getAsInt();
             notification.member = obj.get("member_id").getAsLong();
-            notification.type = GroupNotification.NOTIFICATION_GROUP_MEMBER_ADDED;
+            notification.notificationType = GroupNotification.NOTIFICATION_GROUP_MEMBER_ADDED;
         }
 
         return notification;
@@ -208,10 +216,12 @@ public class IMessage {
             return MessageType.MESSAGE_GROUP_NOTIFICATION;
         }
 
-        public int type;
+        public int notificationType;
 
         public String description;
         public long groupID;
+
+        public int timestamp;//单位:秒
 
         //NOTIFICATION_GROUP_CREATED
         public String groupName;
@@ -220,6 +230,14 @@ public class IMessage {
 
         //NOTIFICATION_GROUP_MEMBER_LEAVED, NOTIFICATION_GROUP_MEMBER_ADDED
         public long member;
+    }
+
+    public static class Link extends MessageContent {
+        public String title;
+        public String content;
+        public String url;
+        public String image;
+        public MessageType getType() { return MessageType.MESSAGE_LINK; }
     }
 
     public static class Attachment extends MessageContent {
@@ -248,6 +266,8 @@ public class IMessage {
                 content = gson.fromJson(element.get(LOCATION), Location.class);
             } else if (element.has(ATTACHMENT)) {
                 content = gson.fromJson(element.get(ATTACHMENT), Attachment.class);
+            } else if (element.has(LINK)) {
+                content = gson.fromJson(element.get(LINK), Link.class);
             } else {
                 content = new Unknown();
             }
@@ -269,6 +289,10 @@ public class IMessage {
     public MessageContent content;
     public int timestamp;//单位秒
 
+    //以下字段未保存在文件中
+    public boolean isOutgoing; //当前用户发出的消息
+    private String senderName;
+    private String senderAvatar;
     private boolean uploading;
     private boolean playing;
     private boolean downloading;
@@ -357,4 +381,25 @@ public class IMessage {
         this.geocoding = geocoding;
         changeSupport.firePropertyChange("geocoding", old, geocoding);
     }
+
+    public void setSenderName(String senderName) {
+        String old = this.senderName;
+        this.senderName = senderName;
+        changeSupport.firePropertyChange("senderName", old, this.senderName);
+    }
+
+    public String getSenderName() {
+        return this.senderName;
+    }
+
+    public void setSenderAvatar(String senderAvatar) {
+        String old = this.senderAvatar;
+        this.senderAvatar = senderAvatar;
+        changeSupport.firePropertyChange("senderAvatar", old, this.senderAvatar);
+    }
+
+    public String getSenderAvatar() {
+        return this.senderAvatar;
+    }
+
 }

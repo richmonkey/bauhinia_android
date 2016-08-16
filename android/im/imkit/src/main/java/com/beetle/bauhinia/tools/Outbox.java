@@ -1,11 +1,9 @@
 package com.beetle.bauhinia.tools;
 
-import com.beetle.bauhinia.db.IMessage;
 import com.beetle.bauhinia.api.IMHttpAPI;
 import com.beetle.bauhinia.api.types.Audio;
 import com.beetle.bauhinia.api.types.Image;
-import com.beetle.im.IMMessage;
-import com.beetle.im.IMService;
+import com.beetle.bauhinia.db.IMessage;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -15,20 +13,14 @@ import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
 
 /**
- * Created by houxh on 14-12-3.
+ * Created by houxh on 16/1/18.
  */
 public class Outbox {
-
     public static interface OutboxObserver {
         public void onAudioUploadSuccess(IMessage msg, String url);
         public void onAudioUploadFail(IMessage msg);
         public void onImageUploadSuccess(IMessage msg, String url);
         public void onImageUploadFail(IMessage msg);
-    }
-
-    private static Outbox instance = new Outbox();
-    public static Outbox getInstance() {
-        return instance;
     }
 
     ArrayList<OutboxObserver> observers = new ArrayList<OutboxObserver>();
@@ -49,8 +41,8 @@ public class Outbox {
     public boolean isUploading(IMessage msg) {
         for(IMessage m : messages) {
             if (m.sender == msg.sender &&
-                m.receiver == msg.receiver &&
-                m.msgLocalID == msg.msgLocalID) {
+                    m.receiver == msg.receiver &&
+                    m.msgLocalID == msg.msgLocalID) {
                 return true;
             }
         }
@@ -69,19 +61,20 @@ public class Outbox {
         String type = ImageMIME.getMimeType(file);
         TypedFile typedFile = new TypedFile(type, file);
         IMHttpAPI.IMHttp imHttp = IMHttpAPI.Singleton();
-        imHttp.postImages(type// + "; charset=binary"
+        imHttp.postImages(type
                 , typedFile)
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Action1<Image>() {
                     @Override
                     public void call(Image image) {
-                        Outbox.this.sendImageMessage(msg, image.srcUrl, false);
+                        Outbox.this.sendImageMessage(msg, image.srcUrl);
                         onUploadImageSuccess(msg, image.srcUrl);
                         messages.remove(msg);
                     }
                 }, new Action1<Throwable>() {
                     @Override
                     public void call(Throwable throwable) {
+                        Outbox.this.markMessageFailure(msg);
                         onUploadImageFail(msg);
                         messages.remove(msg);
                     }
@@ -99,69 +92,14 @@ public class Outbox {
                 .subscribe(new Action1<Audio>() {
                     @Override
                     public void call(Audio audio) {
-                        Outbox.this.sendAudioMessage(msg, audio.srcUrl, false);
+                        Outbox.this.sendAudioMessage(msg, audio.srcUrl);
                         onUploadAudioSuccess(msg, audio.srcUrl);
                         messages.remove(msg);
                     }
                 }, new Action1<Throwable>() {
                     @Override
                     public void call(Throwable throwable) {
-                        onUploadAudioFail(msg);
-                        messages.remove(msg);
-                    }
-                });
-        return true;
-    }
-
-    public boolean uploadGroupImage(final IMessage msg, String filePath) {
-        File file;
-        try {
-            file = new File(filePath);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-        messages.add(msg);
-        String type = ImageMIME.getMimeType(file);
-        TypedFile typedFile = new TypedFile(type, file);
-        IMHttpAPI.IMHttp imHttp = IMHttpAPI.Singleton();
-        imHttp.postImages(type// + "; charset=binary"
-                , typedFile)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<Image>() {
-                    @Override
-                    public void call(Image image) {
-                        Outbox.this.sendImageMessage(msg, image.srcUrl, true);
-                        onUploadImageSuccess(msg, image.srcUrl);
-                        messages.remove(msg);
-                    }
-                }, new Action1<Throwable>() {
-                    @Override
-                    public void call(Throwable throwable) {
-                        onUploadImageFail(msg);
-                        messages.remove(msg);
-                    }
-                });
-        return true;
-    }
-
-    public boolean uploadGroupAudio(final IMessage msg, String file) {
-        messages.add(msg);
-        String type = "audio/amr";
-        TypedFile typedFile = new TypedFile(type, new File(file));
-        IMHttpAPI.IMHttp imHttp = IMHttpAPI.Singleton();
-        imHttp.postAudios(type, typedFile)
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<Audio>() {
-                    @Override
-                    public void call(Audio audio) {
-                        Outbox.this.sendAudioMessage(msg, audio.srcUrl, true);
-                        onUploadAudioSuccess(msg, audio.srcUrl);
-                        messages.remove(msg);
-                    }
-                }, new Action1<Throwable>() {
-                    @Override
-                    public void call(Throwable throwable) {
+                        Outbox.this.markMessageFailure(msg);
                         onUploadAudioFail(msg);
                         messages.remove(msg);
                     }
@@ -170,38 +108,6 @@ public class Outbox {
     }
 
 
-
-    private void sendImageMessage(IMessage imsg, String url, boolean isGroup) {
-        IMMessage msg = new IMMessage();
-        msg.sender = imsg.sender;
-        msg.receiver = imsg.receiver;
-        msg.content = IMessage.newImage(url).getRaw();
-        msg.msgLocalID = imsg.msgLocalID;
-
-        IMService im = IMService.getInstance();
-        if (isGroup) {
-            im.sendGroupMessage(msg);
-        } else {
-            im.sendPeerMessage(msg);
-        }
-    }
-
-    private void sendAudioMessage(IMessage imsg, String url, boolean isGroup) {
-        IMessage.Audio audio = (IMessage.Audio)imsg.content;
-
-        IMMessage msg = new IMMessage();
-        msg.sender = imsg.sender;
-        msg.receiver = imsg.receiver;
-        msg.msgLocalID = imsg.msgLocalID;
-        msg.content = IMessage.newAudio(url, audio.duration).getRaw();
-
-        IMService im = IMService.getInstance();
-        if (isGroup) {
-            im.sendGroupMessage(msg);
-        } else {
-            im.sendPeerMessage(msg);
-        }
-    }
 
     private void onUploadAudioSuccess(IMessage msg, String url) {
         for (OutboxObserver ob : observers) {
@@ -226,4 +132,18 @@ public class Outbox {
             ob.onImageUploadFail(msg);
         }
     }
+
+
+    protected void markMessageFailure(IMessage msg) {
+
+    }
+
+    protected void sendImageMessage(IMessage imsg, String url) {
+
+    }
+
+    protected void sendAudioMessage(IMessage imsg, String url) {
+
+    }
+
 }
