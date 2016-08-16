@@ -218,7 +218,6 @@ public class IMessage {
         public static final int NOTIFICATION_GROUP_MEMBER_LEAVED = 4;//群成员离开
         public static final int NOTIFICATION_GROUP_NAME_UPDATED = 5;//群名修改
 
-
         public MessageType getType() {
             return MessageType.MESSAGE_GROUP_NOTIFICATION;
         }
