@@ -6,7 +6,7 @@ project(':react-native-dialogs').projectDir = file('../node_modules/react-native
 
 
 
-project(':pushsdk').projectDir = new File('im/pushsdk')
+//project(':pushsdk').projectDir = new File('im/pushsdk')
 project(':asynctcp').projectDir = new File('im/asynctcp')
 project(':imsdk').projectDir = new File('im/imsdk')
 project(':imkit').projectDir = new File('im/imkit')

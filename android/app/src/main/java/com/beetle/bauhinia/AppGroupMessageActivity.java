@@ -24,7 +24,7 @@ public class AppGroupMessageActivity extends GroupMessageActivity {
         if (uid == 0) {
             return null;
         }
-        User u = UserDB.getInstance().loadUser(uid);
+        com.beetle.bauhinia.api.types.User u = UserDB.getInstance().loadUser(uid);
         Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
         if (c != null) {
             u.name = c.displayName;

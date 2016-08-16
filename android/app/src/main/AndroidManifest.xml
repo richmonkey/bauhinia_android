@@ -64,7 +64,7 @@
             android:name=".PeerMessageActivity"
             android:exported="true"
             android:theme="@style/imkit.NoActionBar"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="stateAlwaysHidden">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
             </intent-filter>
@@ -85,7 +85,7 @@
             android:name=".AppGroupMessageActivity"
             android:exported="true"
             android:theme="@style/imkit.NoActionBar"
-            android:windowSoftInputMode="adjustResize">
+            android:windowSoftInputMode="stateAlwaysHidden">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
             </intent-filter>

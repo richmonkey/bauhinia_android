@@ -31,7 +31,6 @@ import com.beetle.bauhinia.model.GroupDB;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
-import com.beetle.im.LoginPoint;
 import com.beetle.im.Timer;
 import com.beetle.bauhinia.activity.BaseActivity;
 import com.beetle.bauhinia.api.IMHttp;
@@ -98,7 +97,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             }
             TextView tv = (TextView) view.findViewById(R.id.name);
             Conversation c = conversations.get(position);
-            tv.setText(c.name);
+            tv.setText(c.getName());
 
             tv = (TextView)view.findViewById(R.id.content);
             if (c.message != null) {
@@ -112,10 +111,10 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
                 placeholder = R.drawable.group_avatar;
             }
 
-            if (c.avatar != null && c.avatar.length() > 0) {
+            if (c.getAvatar() != null && c.getAvatar().length() > 0) {
                 ImageView imageView = (ImageView) view.findViewById(R.id.header);
                 Picasso.with(getBaseContext())
-                        .load(c.avatar)
+                        .load(c.getAvatar())
                         .placeholder(placeholder)
                         .into(imageView);
             }
@@ -321,8 +320,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
         for (Conversation conv : conversations) {
             User u = getUser(conv.cid);
-            conv.name = u.name;
-            conv.avatar = u.avatar;
+            conv.setName(u.name);
+            conv.setAvatar(u.avatar);
         }
         adapter.notifyDataSetChanged();
 
@@ -396,11 +395,11 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             }
             User u = getUser(conv.cid);
             if (TextUtils.isEmpty(u.name)) {
-                conv.name = u.number;
+                conv.setName(u.number);
             } else {
-                conv.name = u.name;
+                conv.setName(u.name);
             }
-            conv.avatar = u.avatar;
+            conv.setAvatar(u.avatar);
             conversations.add(conv);
         }
 
@@ -415,7 +414,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             }
             updateNotificationDesc(conv.message);
             String groupName = getGroupName(conv.cid);
-            conv.name = groupName;
+            conv.setName(groupName);
             conversations.add(conv);
         }
     }
@@ -495,7 +494,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     public void onItemClick(AdapterView<?> parent, View view, int position,
                             long id) {
         Conversation conv = conversations.get(position);
-        Log.i(TAG, "conv:" + conv.name);
+        Log.i(TAG, "conv:" + conv.getName());
 
         if (conv.type == Conversation.CONVERSATION_PEER) {
 
@@ -504,7 +503,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             Intent intent = new Intent(this, PeerMessageActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra("peer_uid", conv.cid);
-            intent.putExtra("peer_name", conv.name);
+            intent.putExtra("peer_name", conv.getName());
             intent.putExtra("peer_up_timestamp", user.up_timestamp);
             intent.putExtra("current_uid", Token.getInstance().uid);
             startActivity(intent);
@@ -514,7 +513,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
             Intent intent = new Intent(this, AppGroupMessageActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra("group_id", conv.cid);
-            intent.putExtra("group_name", conv.name);
+            intent.putExtra("group_name", conv.getName());
             intent.putExtra("current_uid", Token.getInstance().uid);
             startActivity(intent);
 
@@ -526,9 +525,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     }
 
-    public void onLoginPoint(LoginPoint lp) {
 
-    }
 
     public void onPeerInputting(long uid) {
 
@@ -575,8 +572,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         conversation.type = Conversation.CONVERSATION_PEER;
         conversation.cid = cid;
         User u = getUser(cid);
-        conversation.name = u.name;
-        conversation.avatar = u.avatar;
+        conversation.setName(u.name);
+        conversation.setAvatar(u.avatar);
         return conversation;
     }
 
@@ -584,7 +581,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         Conversation conversation = new Conversation();
         conversation.type = Conversation.CONVERSATION_GROUP;
         conversation.cid = cid;
-        conversation.name = getGroupName(cid);
+        conversation.setName(getGroupName(cid));
         return conversation;
     }
 
@@ -629,15 +626,15 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
     public void onGroupNotification(String text) {
         GroupNotification groupNotification = IMessage.newGroupNotification(text);
 
-        if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_CREATED) {
+        if (groupNotification.notificationType == GroupNotification.NOTIFICATION_GROUP_CREATED) {
             onGroupCreated(groupNotification);
-        } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_DISBAND) {
+        } else if (groupNotification.notificationType == GroupNotification.NOTIFICATION_GROUP_DISBAND) {
             onGroupDisband(groupNotification);
-        } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_ADDED) {
+        } else if (groupNotification.notificationType == GroupNotification.NOTIFICATION_GROUP_MEMBER_ADDED) {
             onGroupMemberAdd(groupNotification);
-        } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED) {
+        } else if (groupNotification.notificationType == GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED) {
             onGroupMemberLeave(groupNotification);
-        } else if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_NAME_UPDATED) {
+        } else if (groupNotification.notificationType == GroupNotification.NOTIFICATION_GROUP_NAME_UPDATED) {
             onGroupNameUpdate(groupNotification);
         } else {
             Log.i(TAG, "unknown notification");
@@ -659,8 +656,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         }
         conv.message = imsg;
 
-        if (groupNotification.type == GroupNotification.NOTIFICATION_GROUP_NAME_UPDATED) {
-            conv.name = groupNotification.groupName;
+        if (groupNotification.notificationType == GroupNotification.NOTIFICATION_GROUP_NAME_UPDATED) {
+            conv.setName(groupNotification.groupName);
         }
         adapter.notifyDataSetChanged();
 
@@ -701,17 +698,17 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         }
         long currentUID = Token.getInstance().uid;
         GroupNotification notification = (GroupNotification)imsg.content;
-        if (notification.type == GroupNotification.NOTIFICATION_GROUP_CREATED) {
+        if (notification.notificationType == GroupNotification.NOTIFICATION_GROUP_CREATED) {
             if (notification.master == currentUID) {
                 notification.description = String.format("您创建了\"%s\"群组", notification.groupName);
             } else {
                 notification.description = String.format("您加入了\"%s\"群组", notification.groupName);
             }
-        } else if (notification.type == GroupNotification.NOTIFICATION_GROUP_DISBAND) {
+        } else if (notification.notificationType == GroupNotification.NOTIFICATION_GROUP_DISBAND) {
             notification.description = "群组已解散";
-        } else if (notification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_ADDED) {
+        } else if (notification.notificationType == GroupNotification.NOTIFICATION_GROUP_MEMBER_ADDED) {
             notification.description = String.format("\"%s\"加入群", getUserName(notification.member));
-        } else if (notification.type == GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED) {
+        } else if (notification.notificationType == GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED) {
             notification.description = String.format("\"%s\"离开群", getUserName(notification.member));
         }
     }
