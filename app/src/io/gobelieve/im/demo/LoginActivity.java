@@ -3,6 +3,7 @@ package io.gobelieve.im.demo;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -80,12 +81,19 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
                     });
         }
 
-        Intent intent = new Intent(this, PeerMessageActivity.class);
-        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        intent.putExtra("peer_uid", receiver);
-        intent.putExtra("peer_name", "测试");
-        intent.putExtra("current_uid", sender);
-        startActivity(intent);
+        if (receiver == 0) {
+            Intent intent = new Intent(this, MessageListActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra("current_uid", sender);
+            startActivity(intent);
+        } else {
+            Intent intent = new Intent(this, PeerMessageActivity.class);
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            intent.putExtra("peer_uid", receiver);
+            intent.putExtra("peer_name", "测试");
+            intent.putExtra("current_uid", sender);
+            startActivity(intent);
+        }
         finish();
     }
 
@@ -104,16 +112,16 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
                 return;
             }
 
-            if (mEtTargetAccount.getText().toString().length() <= 0) {
-                Toast.makeText(this, "请设置接收者的用户id", Toast.LENGTH_SHORT).show();
-                return;
-            }
-            final long receiverId = Long.parseLong(mEtTargetAccount.getText().toString());
-            if (receiverId <= 0) {
-                Toast.makeText(this, "接收方id不能为0或者-1", Toast.LENGTH_SHORT).show();
-                return;
+
+            long receiver = 0;
+            if (mEtTargetAccount.getText().toString().length() > 0) {
+                receiver = Long.parseLong(mEtTargetAccount.getText().toString());
+                if (receiver <= 0) {
+                    receiver = 0;
+                }
             }
 
+            final long receiverId = receiver;
 
             if (mLoginTask != null) {
                 return;
@@ -140,8 +148,7 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
     }
 
     private String login(long uid) {
-        //调用app自身的登陆接口获取im服务必须的access token,之后可将token保存在本地供下次直接登录IM服务,此URL为新游提供的Demo授权接口
-        //sandbox地址: "http://sandbox.demo.gobelieve.io"
+        //调用app自身的登陆接口获取im服务必须的access token,之后可将token保存在本地供下次直接登录IM服务
         String URL = "http://demo.gobelieve.io";
         String uri = String.format("%s/auth/token", URL);
         try {
@@ -149,6 +156,11 @@ public class LoginActivity extends BaseActivity implements View.OnClickListener 
             HttpPost request = new HttpPost(uri);
             JSONObject json = new JSONObject();
             json.put("uid", uid);
+            int PLATFORM_ANDROID = 2;
+            String androidID = Settings.Secure.getString(this.getContentResolver(),
+                    Settings.Secure.ANDROID_ID);
+            json.put("platform_id", PLATFORM_ANDROID);
+            json.put("device_id", androidID);
             StringEntity s = new StringEntity(json.toString());
             s.setContentEncoding((Header) new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
             request.setEntity(s);

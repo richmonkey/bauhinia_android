@@ -19,32 +19,12 @@ public class MessageImageView extends MessageRowView {
     protected View maskView;
 
     public MessageImageView(Context context, boolean incomming, boolean isShowUserName) {
-        super(context);
+        super(context, incomming, isShowUserName);
 
         int contentLayout = R.layout.chat_content_image;
 
-        View convertView;
-
-         if (!incomming) {
-            convertView = inflater.inflate(
-                    R.layout.chat_container_right, this);
-        } else {
-            convertView = inflater.inflate(
-                    R.layout.chat_container_left, this);
-
-            if (isShowUserName) {
-                TextView textView = (TextView)convertView.findViewById(R.id.name);
-                textView.setVisibility(View.GONE);
-            } else {
-                TextView textView = (TextView)convertView.findViewById(R.id.name);
-                textView.setVisibility(View.GONE);
-            }
-        }
-
-        ViewGroup group = (ViewGroup)convertView.findViewById(R.id.content);
+        ViewGroup group = (ViewGroup)this.findViewById(R.id.content);
         group.addView(inflater.inflate(contentLayout, group, false));
-
-        this.contentView = group;
         uploadingProgressBar = (ProgressBar)findViewById(R.id.progress_bar);
         if (!incomming) {
             maskView = findViewById(R.id.mask);
@@ -57,6 +37,7 @@ public class MessageImageView extends MessageRowView {
         ImageView imageView = (ImageView)findViewById(R.id.image);
         Picasso.with(context)
                 .load(((IMessage.Image) msg.content).image + "@256w_256h_0c")
+                .placeholder(R.drawable.image_download_fail)
                 .into(imageView);
 
         boolean uploading = msg.getUploading();

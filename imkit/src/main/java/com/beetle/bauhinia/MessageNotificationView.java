@@ -8,21 +8,16 @@ import android.widget.TextView;
 import com.beetle.bauhinia.db.IMessage;
 import com.beetle.imkit.R;
 
+import java.beans.PropertyChangeEvent;
+
 public class MessageNotificationView extends MessageRowView {
     public MessageNotificationView(Context context) {
         super(context);
         final int contentLayout;
         contentLayout = R.layout.chat_content_text;
 
-        View convertView;
-
-        convertView = inflater.inflate(
-                R.layout.chat_container_center, this);
-
-        ViewGroup group = (ViewGroup)convertView.findViewById(R.id.content);
+        ViewGroup group = (ViewGroup)this.findViewById(R.id.content);
         group.addView(inflater.inflate(contentLayout, group, false));
-
-        this.contentView = group;
     }
 
     @Override
@@ -36,6 +31,14 @@ public class MessageNotificationView extends MessageRowView {
         requestLayout();
     }
 
-
+    @Override
+    public void propertyChange(PropertyChangeEvent event) {
+        super.propertyChange(event);
+        if (event.getPropertyName().equals("downloading")) {
+            TextView content = (TextView) findViewById(R.id.text);
+            String text = ((IMessage.GroupNotification) this.message.content).description;
+            content.setText(text);
+        }
+    }
 
 }
