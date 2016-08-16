@@ -8,16 +8,6 @@
               android:orientation="vertical"
               tools:context=".MainActivity" >
 
-    <android.support.v7.widget.Toolbar
-        android:id="@+id/support_toolbar"
-        android:layout_height="wrap_content"
-        android:layout_width="match_parent"
-        android:layout_gravity="left"
-        android:navigationIcon="@drawable/ic_activity_back"
-        android:background="@color/theme_primary"
-        app:title="羊蹄甲"
-        />
-
     <ListView
             android:id="@+id/list"
             android:layout_width="match_parent"

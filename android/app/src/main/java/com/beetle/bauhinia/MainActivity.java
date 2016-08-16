@@ -142,9 +142,6 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
     // 初始化组件
     private void initWidget() {
-        Toolbar toolbar = (Toolbar)findViewById(R.id.support_toolbar);
-        setSupportActionBar(toolbar);
-
         lv = (ListView) findViewById(R.id.list);
         adapter = new ConversationAdapter();
         lv.setAdapter(adapter);
