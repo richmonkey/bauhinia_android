@@ -87,4 +87,11 @@ public class LoginActivity extends AccountActivity implements TextView.OnEditorA
         }
         return false;
     }
+
+
+    @Override
+    public boolean canBack() {
+        return false;
+    }
+
 }

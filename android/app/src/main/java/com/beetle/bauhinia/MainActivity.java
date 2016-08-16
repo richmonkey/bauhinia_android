@@ -14,7 +14,6 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
-import android.support.v7.widget.Toolbar;
 
 import com.beetle.bauhinia.activity.GroupCreatorActivity;
 import com.beetle.bauhinia.activity.ZBarActivity;
@@ -31,6 +30,9 @@ import com.beetle.bauhinia.model.GroupDB;
 import com.beetle.im.IMMessage;
 import com.beetle.im.IMService;
 import com.beetle.im.IMServiceObserver;
+import com.beetle.im.GroupMessageObserver;
+import com.beetle.im.PeerMessageObserver;
+
 import com.beetle.im.Timer;
 import com.beetle.bauhinia.activity.BaseActivity;
 import com.beetle.bauhinia.api.IMHttp;
@@ -59,7 +61,11 @@ import rx.functions.Action1;
  */
 
 
-public class MainActivity extends BaseActivity implements IMServiceObserver, AdapterView.OnItemClickListener,
+public class MainActivity extends BaseActivity implements IMServiceObserver,
+        GroupMessageObserver,
+        PeerMessageObserver,
+        AdapterView.OnItemClickListener,
+
         ContactDB.ContactObserver, NotificationCenter.NotificationCenterObserver {
 
     private static final int QRCODE_SCAN_REQUEST = 100;
@@ -231,6 +237,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
 
         IMService im =  IMService.getInstance();
         im.addObserver(this);
+        im.addPeerObserver(this);
+        im.addGroupObserver(this);
         im.setUID(Token.getInstance().uid);
         im.start();
 
@@ -305,6 +313,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver, Ada
         ContactDB.getInstance().removeObserver(this);
         IMService im =  IMService.getInstance();
         im.removeObserver(this);
+        im.removePeerObserver(this);
+        im.removeGroupObserver(this);
         this.refreshTimer.suspend();
         NotificationCenter nc = NotificationCenter.defaultCenter();
         nc.removeObserver(this);
