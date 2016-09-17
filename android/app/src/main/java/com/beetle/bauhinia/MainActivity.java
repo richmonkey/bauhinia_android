@@ -507,7 +507,6 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             return topic;
         }
 
-
         Group group = GroupDB.getInstance().loadGroup(gid);
         if (group == null) {
             return "";
@@ -620,6 +619,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         }
 
         conversation.message = imsg;
+        updateConversationDetail(conversation);
         adapter.notifyDataSetChanged();
     }
 
@@ -637,9 +637,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         Conversation conversation = new Conversation();
         conversation.type = Conversation.CONVERSATION_PEER;
         conversation.cid = cid;
-        User u = getUser(cid);
-        conversation.setName(u.name);
-        conversation.setAvatar(u.avatar);
+        updatePeerConversationName(conversation);
         return conversation;
     }
 
@@ -647,7 +645,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         Conversation conversation = new Conversation();
         conversation.type = Conversation.CONVERSATION_GROUP;
         conversation.cid = cid;
-        conversation.setName(getGroupName(cid));
+        updateGroupConversationName(conversation);
         return conversation;
     }
 
@@ -678,8 +676,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             conversation = newGroupConversation(msg.receiver);
             conversations.add(conversation);
         }
-
         conversation.message = imsg;
+        updateConversationDetail(conversation);
         adapter.notifyDataSetChanged();
     }
     public void onGroupMessageACK(int msgLocalID, long uid) {
@@ -721,6 +719,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             conversations.add(conv);
         }
         conv.message = imsg;
+        updateConversationDetail(conv);
 
         if (groupNotification.notificationType == GroupNotification.NOTIFICATION_GROUP_NAME_UPDATED) {
             conv.setName(groupNotification.groupName);
