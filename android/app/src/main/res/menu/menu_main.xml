@@ -14,7 +14,7 @@
         />
 
     <item android:id="@+id/action_new_group"
-        android:title="发起群聊"
+        android:title="新建群组"
         app:showAsAction="never"
         />
 
