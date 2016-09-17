@@ -775,6 +775,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             notification.description = String.format("\"%s\"加入群", getUserName(notification.member));
         } else if (notification.notificationType == GroupNotification.NOTIFICATION_GROUP_MEMBER_LEAVED) {
             notification.description = String.format("\"%s\"离开群", getUserName(notification.member));
+        } else if (notification.notificationType == GroupNotification.NOTIFICATION_GROUP_NAME_UPDATED) {
+            notification.description = String.format("群组改名为:\"%s\"", notification.groupName);
         }
     }
 
