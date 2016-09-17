@@ -20,7 +20,9 @@ import java.util.ArrayList;
  * Created by houxh on 15/3/21.
  */
 public class AppGroupMessageActivity extends GroupMessageActivity {
-    protected String getUserName(long uid) {
+
+    @Override
+    protected User getUser(long uid) {
         if (uid == 0) {
             return null;
         }
@@ -31,7 +33,9 @@ public class AppGroupMessageActivity extends GroupMessageActivity {
         } else {
             u.name = u.number;
         }
-        return u.name;
+        User user = new User();
+        user.name = u.name;
+        return user;
     }
 
     @Override
