@@ -17,6 +17,7 @@ import com.beetle.bauhinia.db.GroupMessageDB;
 import com.beetle.bauhinia.db.GroupMessageHandler;
 import com.beetle.bauhinia.db.PeerMessageDB;
 import com.beetle.bauhinia.db.PeerMessageHandler;
+import com.beetle.bauhinia.react.ReactInstance;
 import com.beetle.im.IMService;
 import com.beetle.bauhinia.api.IMHttp;
 import com.beetle.bauhinia.api.IMHttpFactory;
@@ -26,6 +27,7 @@ import com.beetle.bauhinia.tools.BinAscii;
 import com.beetle.bauhinia.tools.FileCache;
 import com.beetle.push.Push;
 import com.beetle.push.instance.SmartPushServiceProvider;
+import com.facebook.react.ReactInstanceManager;
 import com.gameservice.sdk.crashdump.NgdsCrashHandler;
 import com.beetle.push.IMsgReceiver;
 
@@ -52,6 +54,9 @@ public class IMApplication extends Application implements Application.ActivityLi
             return;
         }
         Log.i(TAG, "app application create");
+
+
+        ReactInstance.getInstance().build(this);
 
         LevelDB ldb = LevelDB.getDefaultDB();
         String dir = getFilesDir().getAbsoluteFile() + File.separator + "db";

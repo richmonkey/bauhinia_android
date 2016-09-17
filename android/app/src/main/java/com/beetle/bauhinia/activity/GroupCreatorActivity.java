@@ -138,7 +138,7 @@ public class GroupCreatorActivity extends Activity implements DefaultHardwareBac
             }
         }
         props.putParcelableArrayList("users", users);
-        mReactRootView.startReactApplication(mReactInstanceManager, "GroupCreator", props);
+        mReactRootView.startReactApplication(mReactInstanceManager, "GroupCreatorIndex", props);
         setContentView(mReactRootView);
     }
 

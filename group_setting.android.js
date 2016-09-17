@@ -104,7 +104,7 @@ class GroupSetting extends Component {
 
   finish() {
     var groupSetting = NativeModules.GroupSettingModule;
-    groupSetting.finish();
+    groupSetting.finish(this.props.hash_code);
   }
 
   showSpinner() {
@@ -116,6 +116,7 @@ class GroupSetting extends Component {
   }
 
   render() {
+    console.log("render group setting");
     var self = this;
     var rows = this.state.members.map(function(i) {
       return (
@@ -266,8 +267,7 @@ class GroupSetting extends Component {
       console.log("status:", response.status);
       if (response.status == 200) {
         this.hideSpinner();
-        var groupSetting = NativeModules.GroupSettingModule;
-        groupSetting.finish();
+        this.finish();
       } else {
         return response.json().then((responseJson)=>{
           console.log(responseJson.meta.message);

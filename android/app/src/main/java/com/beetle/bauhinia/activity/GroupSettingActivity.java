@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 
 import com.aakashns.reactnativedialogs.ReactNativeDialogsPackage;
@@ -17,6 +18,8 @@ import com.beetle.bauhinia.model.Group;
 import com.beetle.bauhinia.model.GroupDB;
 import com.beetle.bauhinia.model.PhoneNumber;
 import com.beetle.bauhinia.model.UserDB;
+import com.beetle.bauhinia.react.GroupSettingModule;
+import com.beetle.bauhinia.react.ReactInstance;
 import com.facebook.react.LifecycleState;
 import com.facebook.react.ReactInstanceManager;
 import com.facebook.react.ReactPackage;
@@ -25,6 +28,7 @@ import com.facebook.react.bridge.Callback;
 import com.facebook.react.bridge.JavaScriptModule;
 import com.facebook.react.bridge.NativeModule;
 import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.ReadableArray;
@@ -47,84 +51,15 @@ import java.util.List;
 
 public class GroupSettingActivity extends Activity implements DefaultHardwareBackBtnHandler {
 
+    private static String TAG = "bauhinia";
+
+
     private long groupID;
     private ReactRootView mReactRootView;
     private ReactInstanceManager mReactInstanceManager;
 
 
-    public class GroupSettingModule extends ReactContextBaseJavaModule {
-
-        public GroupSettingModule(ReactApplicationContext reactContext) {
-            super(reactContext);
-        }
-
-        @Override
-        public String getName() {
-            return "GroupSettingModule";
-        }
-
-
-        @ReactMethod
-        public void finish() {
-            GroupSettingActivity.this.finish();
-        }
-
-        @ReactMethod
-        public void loadUsers(Callback successCallback) {
-            WritableArray users = new WritableNativeArray();
-
-            ContactDB db = ContactDB.getInstance();
-            final ArrayList<Contact> contacts = db.getContacts();
-            for (int i = 0; i < contacts.size(); i++) {
-                Contact c = contacts.get(i);
-                for (int j = 0; j < c.phoneNumbers.size(); j++) {
-                    Contact.ContactData data = c.phoneNumbers.get(j);
-                    PhoneNumber number = new PhoneNumber();
-                    if (!number.parsePhoneNumber(data.value)) {
-                        continue;
-                    }
-
-                    UserDB userDB = UserDB.getInstance();
-                    User u = userDB.loadUser(number);
-                    if (u != null) {
-                        u.name = c.displayName;
-
-                        WritableMap obj = new WritableNativeMap();
-                        obj.putDouble("uid", (double)u.uid);
-                        obj.putString("name", u.name);
-                        users.pushMap(obj);
-                    }
-                }
-            }
-            successCallback.invoke(users);
-        }
-
-    }
-
-    class GroupSettingPackage implements ReactPackage {
-
-        @Override
-        public List<Class<? extends JavaScriptModule>> createJSModules() {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public List<ViewManager> createViewManagers(ReactApplicationContext reactContext) {
-            return Collections.emptyList();
-        }
-
-        @Override
-        public List<NativeModule> createNativeModules(
-                ReactApplicationContext reactContext) {
-            List<NativeModule> modules = new ArrayList<NativeModule>();
-
-            modules.add(new GroupSettingModule(reactContext));
-
-            return modules;
-        }
-    }
-
-
+    ReactInstanceManager.ReactInstanceEventListener listener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,16 +77,7 @@ public class GroupSettingActivity extends Activity implements DefaultHardwareBac
         }
 
         mReactRootView = new ReactRootView(this);
-        mReactInstanceManager = ReactInstanceManager.builder()
-                .setApplication(getApplication())
-                .setBundleAssetName("index.android.bundle")
-                .setJSMainModuleName("index.android")
-                .addPackage(new MainReactPackage())
-                .addPackage(new GroupSettingPackage())
-                .addPackage(new ReactNativeDialogsPackage())
-                .setUseDeveloperSupport(BuildConfig.DEBUG)
-                .setInitialLifecycleState(LifecycleState.RESUMED)
-                .build();
+        mReactInstanceManager = ReactInstance.getInstance().getReactInstanceManager();
 
         Bundle props = new Bundle();
         props.putLong("group_id", groupID);
@@ -162,6 +88,7 @@ public class GroupSettingActivity extends Activity implements DefaultHardwareBac
         props.putLong("uid", Token.getInstance().uid);
         props.putString("token", Token.getInstance().accessToken);
         props.putString("url", Config.SDK_API_URL);
+        props.putInt("hash_code", hashCode());
 
         ArrayList<Long> members = group.getMembers();
         Bundle bundles[] = new Bundle[members.size()];
@@ -184,9 +111,29 @@ public class GroupSettingActivity extends Activity implements DefaultHardwareBac
 
         props.putParcelableArray("members", bundles);
 
+        Log.i(TAG, "before start");
         mReactRootView.startReactApplication(mReactInstanceManager, "GroupSettingIndex", props);
+        Log.i(TAG, "after start");
 
         setContentView(mReactRootView);
+
+        ReactContext context = mReactInstanceManager.getCurrentReactContext();
+        if (context == null) {
+            listener = new ReactInstanceManager.ReactInstanceEventListener() {
+                @Override
+                public void onReactContextInitialized(ReactContext context) {
+                GroupSettingModule m = context.getNativeModule(GroupSettingModule.class);
+                Log.i(TAG, "module:" + m);
+                m.addActivity(GroupSettingActivity.this);
+               }
+            };
+
+            mReactInstanceManager.addReactInstanceEventListener(listener);
+        } else {
+            GroupSettingModule m = context.getNativeModule(GroupSettingModule.class);
+            Log.i(TAG, "module:" + m);
+            m.addActivity(this);
+        }
     }
 
     @Override
@@ -216,6 +163,18 @@ public class GroupSettingActivity extends Activity implements DefaultHardwareBac
     @Override
     protected void onDestroy() {
         super.onDestroy();
+
+        ReactContext context = mReactInstanceManager.getCurrentReactContext();
+        if (context != null) {
+            GroupSettingModule m = context.getNativeModule(GroupSettingModule.class);
+            Log.i(TAG, "module:" + m);
+            m.removeActivity(this);
+        }
+
+        if (listener != null) {
+            mReactInstanceManager.removeReactInstanceEventListener(listener);
+        }
+
 
         if (mReactInstanceManager != null) {
             mReactInstanceManager.onHostDestroy();

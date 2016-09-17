@@ -42,7 +42,6 @@ var GroupMemberAdd = React.createClass({
     var userIDs = [];
     for (var i = 0; i < users.length; i++) {
       userIDs.push(users[i].uid);
-      users[i].member_id = users[i].uid;
     }
     
     var url = this.props.url + "/groups/" + this.props.group_id + "/members";
