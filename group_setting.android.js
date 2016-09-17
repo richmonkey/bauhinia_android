@@ -137,8 +137,8 @@ class GroupSetting extends Component {
 
     
     var leftButtonConfig = {
-      title: '取消',
-      handler: this.finish.bind(this),
+      title: '返回',
+      handler: () => this.finish()
     };
 
     var rightButtonConfig = {
@@ -159,8 +159,9 @@ class GroupSetting extends Component {
             statusBar={{hidden:true}}
             style={{}}
             title={titleConfig}
-            leftButton={leftButtonConfig} 
-            rightButton={rightButtonConfig} />
+            leftButton={leftButtonConfig} />
+
+        <View style={{height:1, backgroundColor:"lightgrey"}}></View>
 
         <ScrollView style={styles.container}>
           <View style={styles.block}>
@@ -245,10 +246,7 @@ class GroupSetting extends Component {
   }
 
   handleClickMember(i, event) {
-    console.log("this.props:", this.props);
-    console.log("i:", i);
-    var GroupSettingViewControllerBridge = NativeModules.GroupSettingViewControllerBridge;
-    GroupSettingViewControllerBridge.handleClickMember(i.uid);
+    console.log("click member:", i);
   }
 
   quitGroup() {
@@ -301,6 +299,7 @@ reactMixin(GroupSetting.prototype, Subscribable.Mixin);
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#F5FCFF',
+    paddingTop:16,
   },
 
   block: {

@@ -111,25 +111,22 @@ public class GroupSettingActivity extends Activity implements DefaultHardwareBac
 
         props.putParcelableArray("members", bundles);
 
-        Log.i(TAG, "before start");
         mReactRootView.startReactApplication(mReactInstanceManager, "GroupSettingIndex", props);
-        Log.i(TAG, "after start");
-
         setContentView(mReactRootView);
 
-        ReactContext context = mReactInstanceManager.getCurrentReactContext();
-        if (context == null) {
-            listener = new ReactInstanceManager.ReactInstanceEventListener() {
-                @Override
-                public void onReactContextInitialized(ReactContext context) {
+        listener = new ReactInstanceManager.ReactInstanceEventListener() {
+            @Override
+            public void onReactContextInitialized(ReactContext context) {
                 GroupSettingModule m = context.getNativeModule(GroupSettingModule.class);
                 Log.i(TAG, "module:" + m);
                 m.addActivity(GroupSettingActivity.this);
-               }
-            };
+            }
+        };
 
-            mReactInstanceManager.addReactInstanceEventListener(listener);
-        } else {
+        mReactInstanceManager.addReactInstanceEventListener(listener);
+
+        ReactContext context = mReactInstanceManager.getCurrentReactContext();
+        if (context != null) {
             GroupSettingModule m = context.getNativeModule(GroupSettingModule.class);
             Log.i(TAG, "module:" + m);
             m.addActivity(this);
