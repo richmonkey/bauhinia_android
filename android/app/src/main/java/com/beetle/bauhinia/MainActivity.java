@@ -14,9 +14,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+import com.google.gson.Gson;
 
 import com.beetle.bauhinia.activity.GroupCreatorActivity;
 import com.beetle.bauhinia.activity.ZBarActivity;
+import com.beetle.bauhinia.api.IMHttpAPI;
 import com.beetle.bauhinia.api.body.PostQRCode;
 import com.beetle.bauhinia.api.types.Version;
 import com.beetle.bauhinia.db.Conversation;
@@ -45,6 +47,8 @@ import com.beetle.bauhinia.api.types.User;
 import com.beetle.bauhinia.model.UserDB;
 import com.beetle.bauhinia.tools.*;
 import com.beetle.bauhinia.tools.Notification;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
@@ -95,55 +99,16 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         }
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            View view;
+            ConversationView view = null;
             if (convertView == null) {
-                view = getLayoutInflater().inflate(R.layout.message, null);
+                view = new ConversationView(MainActivity.this);
             } else {
-                view = convertView;
+                view = (ConversationView)convertView;
             }
-            TextView tv = (TextView) view.findViewById(R.id.name);
             Conversation c = conversations.get(position);
-            tv.setText(c.getName());
-
-            tv = (TextView)view.findViewById(R.id.content);
-            if (c.message != null) {
-                tv.setText(messageContentToString(c.message.content));
-            }
-
-            int placeholder;
-            if (c.type == Conversation.CONVERSATION_PEER) {
-                placeholder = R.drawable.avatar_contact;
-            } else {
-                placeholder = R.drawable.group_avatar;
-            }
-
-            if (c.getAvatar() != null && c.getAvatar().length() > 0) {
-                ImageView imageView = (ImageView) view.findViewById(R.id.header);
-                Picasso.with(getBaseContext())
-                        .load(c.getAvatar())
-                        .placeholder(placeholder)
-                        .into(imageView);
-            }
-
+            view.setConversation(c);;
             return view;
         }
-
-        public  String messageContentToString(IMessage.MessageContent content) {
-            if (content instanceof IMessage.Text) {
-                return ((IMessage.Text) content).text;
-            } else if (content instanceof IMessage.Image) {
-                return "一张图片";
-            } else if (content instanceof IMessage.Audio) {
-                return "一段语音";
-            } else if (content instanceof IMessage.GroupNotification) {
-                return ((GroupNotification) content).description;
-            } else if (content instanceof IMessage.Location) {
-                return "一个地理位置";
-            } else {
-                return content.getRaw();
-            }
-        }
-
     }
 
     // 初始化组件
@@ -400,19 +365,14 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             if (conv.message == null) {
                 continue;
             }
-            User u = getUser(conv.cid);
-            if (TextUtils.isEmpty(u.name)) {
-                conv.setName(u.number);
-            } else {
-                conv.setName(u.name);
-            }
-            conv.setAvatar(u.avatar);
+            updatePeerConversationName(conv);
+            updateConversationDetail(conv);
             conversations.add(conv);
         }
 
         iter = GroupMessageDB.getInstance().newConversationIterator();
         while (true) {
-            Conversation conv = iter.next();
+            final Conversation conv = iter.next();
             if (conv == null) {
                 break;
             }
@@ -420,10 +380,60 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
                 continue;
             }
             updateNotificationDesc(conv.message);
-            String groupName = getGroupName(conv.cid);
-            conv.setName(groupName);
+            updateGroupConversationName(conv);
+            updateConversationDetail(conv);
             conversations.add(conv);
         }
+    }
+
+
+    void updatePeerConversationName(Conversation conv) {
+        User u = getUser(conv.cid);
+        if (TextUtils.isEmpty(u.name)) {
+            conv.setName(u.number);
+        } else {
+            conv.setName(u.name);
+        }
+        conv.setAvatar(u.avatar);
+    }
+
+    void updateGroupConversationName(final Conversation conv) {
+        String groupName = getGroupName(conv.cid);
+        if (!TextUtils.isEmpty(groupName)) {
+            conv.setName(groupName);
+        } else {
+            groupName = String.format("%d", conv.cid);
+            conv.setName(groupName);
+            asyncGetGroup(conv.cid, new GetGroupCallback() {
+                @Override
+                public void onGroup(Group g) {
+                    if (!TextUtils.isEmpty(g.topic)) {
+                        conv.setName(g.topic);
+                    }
+                }
+            });
+        }
+    }
+
+    public  String messageContentToString(IMessage.MessageContent content) {
+        if (content instanceof IMessage.Text) {
+            return ((IMessage.Text) content).text;
+        } else if (content instanceof IMessage.Image) {
+            return "一张图片";
+        } else if (content instanceof IMessage.Audio) {
+            return "一段语音";
+        } else if (content instanceof IMessage.GroupNotification) {
+            return ((GroupNotification) content).description;
+        } else if (content instanceof IMessage.Location) {
+            return "一个地理位置";
+        } else {
+            return content.getRaw();
+        }
+    }
+
+    void updateConversationDetail(Conversation conv) {
+        String detail = messageContentToString(conv.message.content);
+        conv.setDetail(detail);
     }
 
     private User getUser(long uid) {
@@ -460,41 +470,48 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         if (group == null) {
             return "";
         }
-
-        ArrayList<Long> members = group.getMembers();
-
-        topic = "";
-        long loginUID = Token.getInstance().uid;
-        int count = 0;
-        for (Long uid : members) {
-            if (uid == loginUID) {
-                continue;
-            }
-
-            User u = UserDB.getInstance().loadUser(uid);
-
-            Contact c = ContactDB.getInstance().loadContact(new PhoneNumber(u.zone, u.number));
-            if (c != null) {
-                u.name = c.displayName;
-            } else {
-                u.name = u.number;
-            }
-
-
-            if (topic.length() > 0) {
-                topic += ",";
-            }
-            topic += u.name;
-            count += 1;
-            if (count >= 3) {
-                break;
-            }
-        }
-
-        if (count < 3 && members.indexOf(loginUID) != -1) {
-            topic = "我" + (count > 0 ? "," : "") + topic;
-        }
         return topic;
+    }
+    public interface GetGroupCallback {
+        void onGroup(Group g);
+    }
+
+    protected void asyncGetGroup(final long gid, final GetGroupCallback cb) {
+        IMHttpAPI.Singleton().getGroup(gid)
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new Action1<Object>() {
+                               @Override
+                               public void call(Object obj) {
+                                   Gson g = new Gson();
+                                   JsonObject jobj = g.toJsonTree(obj).getAsJsonObject();
+                                   JsonObject data = jobj.getAsJsonObject("data");
+                                   String name = data.get("name").getAsString();
+
+                                   JsonArray members = data.get("members").getAsJsonArray();
+
+                                   for (int i = 0; i < members.size(); i++) {
+                                       JsonObject m = members.get(i).getAsJsonObject();
+                                       long uid = m.get("uid").getAsLong();
+                                       GroupDB.getInstance().addGroupMember(gid, uid);
+                                   }
+
+                                   if (!TextUtils.isEmpty(name)) {
+                                       GroupDB.getInstance().setGroupTopic(gid, name);
+                                       Group group = new Group();
+                                       group.topic = name;
+                                       cb.onGroup(group);
+                                   }
+                                   Log.i(TAG, "get group success");
+                               }
+                           }, new Action1<Throwable>() {
+                               @Override
+                               public void call(Throwable throwable) {
+                                   Log.i(TAG, "get group fail");
+                               }
+                           }
+                );
+
+
     }
 
     @Override

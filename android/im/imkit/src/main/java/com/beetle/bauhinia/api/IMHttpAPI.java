@@ -5,6 +5,8 @@ import com.beetle.bauhinia.api.body.PostDeviceToken;
 import com.beetle.bauhinia.api.types.Audio;
 import com.beetle.bauhinia.api.types.Image;
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.annotations.SerializedName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +23,7 @@ import retrofit.http.Multipart;
 import retrofit.http.POST;
 import retrofit.http.PUT;
 import retrofit.http.Part;
+import retrofit.http.Path;
 import retrofit.http.Query;
 import retrofit.mime.TypedFile;
 import rx.Observable;
@@ -74,7 +77,6 @@ public class IMHttpAPI {
         accessToken = token;
     }
 
-
     public interface IMHttp {
         @POST("/device/bind")
         Observable<Object> bindDeviceToken(@Body PostDeviceToken token);
@@ -87,7 +89,8 @@ public class IMHttpAPI {
 
         @POST("/audios")
         Observable<Audio> postAudios(@Header("Content-Type") String contentType, @Body TypedFile file);
+
+        @GET("/groups/{id}")
+        Observable<Object> getGroup(@Path("id") long gid);
     };
-
-
 }

@@ -44,8 +44,6 @@ public class UnitTestActivity extends Activity {
     }
 
     private void runUnitTest() {
-        testAPI();
-
 /*
 testUserDB();
         testContact();
@@ -54,30 +52,6 @@ testUserDB();
         testMessageDB();*/
     }
 
-    private void testAPI() {
-        Thread t = new Thread() {
-            @Override
-            public void run() {
-                String code = APIRequest.requestVerifyCode("86", "13635273142");
-                Log.i(TAG, "code:" + code);
-                Token token = APIRequest.requestAuthToken("86", "13635273142", code);
-                Log.i(TAG, "access token:" + token.accessToken);
-                Token token2 = APIRequest.refreshAccessToken(token.refreshToken);
-                Log.i(TAG, "access token:" + token2.accessToken);
-
-                Token t = Token.getInstance();
-                t.accessToken = token2.accessToken;
-                t.refreshToken = token2.refreshToken;
-                t.expireTimestamp = token2.expireTimestamp;
-                t.uid = token.uid;
-
-                ArrayList<User> users = APIRequest.requestUsers(ContactDB.getInstance().getContacts());
-                Log.i(TAG, "user number:" + users.size());
-                return;
-            }
-        };
-        t.start();
-    }
 
     private void testContact() {
         ContactDB db = ContactDB.getInstance();
