@@ -1,5 +1,6 @@
 package com.beetle.bauhinia;
 
+import android.Manifest;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -7,6 +8,8 @@ import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v4.app.ActivityCompat;
+import android.support.v4.content.ContextCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
@@ -74,6 +77,9 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
 
     private static final int QRCODE_SCAN_REQUEST = 100;
     private static final int GROUP_CREATOR_RESULT = 101;
+
+    //request permission id
+    private static final int MY_PERMISSIONS_REQUEST_READ_CONTACTS = 1;
 
     List<Conversation> conversations;
 
@@ -197,8 +203,22 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
 
         setContentView(R.layout.activity_main);
 
-        ContactDB.getInstance().loadContacts();
-        ContactDB.getInstance().addObserver(this);
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_CONTACTS)
+                != PackageManager.PERMISSION_GRANTED) {
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    Manifest.permission.READ_CONTACTS)) {
+                // Show an expanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+            } else {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_CONTACTS},
+                        MY_PERMISSIONS_REQUEST_READ_CONTACTS);
+            }
+        } else {
+            ContactDB.getInstance().loadContacts();
+            ContactDB.getInstance().addObserver(this);
+        }
 
         IMService im =  IMService.getInstance();
         im.addObserver(this);
@@ -239,6 +259,28 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
                         Log.i(TAG, "get latest version fail:" + throwable.getMessage());
                     }
                 });
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode,
+                                           String permissions[], int[] grantResults) {
+        switch (requestCode) {
+            case MY_PERMISSIONS_REQUEST_READ_CONTACTS: {
+                // If request is cancelled, the result arrays are empty.
+                if (grantResults.length > 0
+                        && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    Log.i(TAG, "contact permission granted");
+                    ContactDB.getInstance().loadContacts();
+                    ContactDB.getInstance().addObserver(this);
+                    refreshUsers();
+                } else {
+                    Log.i(TAG, "contact permission denied");
+                }
+                return;
+            }
+            default:
+                break;
+        }
     }
 
     private void checkVersion(final Version version) {
