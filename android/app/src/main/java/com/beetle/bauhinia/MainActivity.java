@@ -790,8 +790,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
                 conversations.add(conversation);
             }
             conversation.message = imsg;
-            adapter.notifyDataSetChanged();
-
+            updateConversationDetail(conversation);
         } else if (notification.name.equals(PeerMessageActivity.CLEAR_MESSAGES)) {
             Long peerUID = (Long)notification.obj;
             Conversation conversation = findConversation(peerUID, Conversation.CONVERSATION_PEER);
@@ -808,8 +807,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
                 conversations.add(conversation);
             }
             conversation.message = imsg;
-            adapter.notifyDataSetChanged();
-
+            updateConversationDetail(conversation);
         }  else if (notification.name.equals(GroupMessageActivity.CLEAR_MESSAGES)) {
             Long groupID = (Long)notification.obj;
             Conversation conversation = findConversation(groupID, Conversation.CONVERSATION_GROUP);
