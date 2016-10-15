@@ -17,6 +17,8 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
+
+import com.beetle.bauhinia.model.NewCount;
 import com.google.gson.Gson;
 
 import com.beetle.bauhinia.activity.GroupCreatorActivity;
@@ -55,6 +57,8 @@ import com.google.gson.JsonObject;
 import com.squareup.picasso.Picasso;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.InputMismatchException;
@@ -242,8 +246,10 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         NotificationCenter nc = NotificationCenter.defaultCenter();
         nc.addObserver(this, PeerMessageActivity.SEND_MESSAGE_NAME);
         nc.addObserver(this, PeerMessageActivity.CLEAR_MESSAGES);
+        nc.addObserver(this, PeerMessageActivity.CLEAR_NEW_MESSAGES);
         nc.addObserver(this, GroupMessageActivity.SEND_MESSAGE_NAME);
         nc.addObserver(this, GroupMessageActivity.CLEAR_MESSAGES);
+        nc.addObserver(this, GroupMessageActivity.CLEAR_NEW_MESSAGES);
 
         IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.getLatestVersion()
@@ -407,6 +413,8 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             if (conv.message == null) {
                 continue;
             }
+            int unread = NewCount.getNewCount(conv.cid);
+            conv.setUnreadCount(unread);
             updatePeerConversationName(conv);
             updateConversationDetail(conv);
             conversations.add(conv);
@@ -421,11 +429,28 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             if (conv.message == null) {
                 continue;
             }
+
+            int unread = NewCount.getGroupNewCount(conv.cid);
+            conv.setUnreadCount(unread);
             updateNotificationDesc(conv.message);
             updateGroupConversationName(conv);
             updateConversationDetail(conv);
             conversations.add(conv);
         }
+
+        Comparator<Conversation> cmp = new Comparator<Conversation>() {
+            public int compare(Conversation c1, Conversation c2) {
+                if (c1.message.timestamp > c2.message.timestamp) {
+                    return -1;
+                } else if (c1.message.timestamp == c2.message.timestamp) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+
+            }
+        };
+        Collections.sort(conversations, cmp);
     }
 
 
@@ -596,6 +621,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
 
     }
 
+    @Override
     public void onPeerMessage(IMMessage msg) {
         Log.i(TAG, "on peer message");
         IMessage imsg = new IMessage();
@@ -615,10 +641,18 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         Conversation conversation = findConversation(cid, Conversation.CONVERSATION_PEER);
         if (conversation == null) {
             conversation = newPeerConversation(cid);
-            conversations.add(conversation);
+            conversations.add(0, conversation);
+        } else {
+            conversations.remove(conversation);
+            conversations.add(0, conversation);
         }
-
         conversation.message = imsg;
+
+        if (msg.sender != Token.getInstance().uid) {
+            int unread = conversation.getUnreadCount() + 1;
+            conversation.setUnreadCount(unread);
+            NewCount.setNewCount(conversation.cid, unread);
+        }
         updateConversationDetail(conversation);
         adapter.notifyDataSetChanged();
     }
@@ -674,9 +708,18 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         Conversation conversation = findConversation(msg.receiver, Conversation.CONVERSATION_GROUP);
         if (conversation == null) {
             conversation = newGroupConversation(msg.receiver);
-            conversations.add(conversation);
+            conversations.add(0, conversation);
+        } else {
+            conversations.remove(conversation);
+            conversations.add(0, conversation);
         }
         conversation.message = imsg;
+
+        if (msg.sender != Token.getInstance().uid) {
+            int unread = conversation.getUnreadCount() + 1;
+            conversation.setUnreadCount(unread);
+            NewCount.setGroupNewCount(conversation.cid, unread);
+        }
         updateConversationDetail(conversation);
         adapter.notifyDataSetChanged();
     }
@@ -716,8 +759,16 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         Conversation conv = findConversation(groupNotification.groupID, Conversation.CONVERSATION_GROUP);
         if (conv == null) {
             conv = newGroupConversation(groupNotification.groupID);
-            conversations.add(conv);
+            conversations.add(0, conv);
+        } else {
+            conversations.remove(conv);
+            conversations.add(0, conv);
         }
+
+        int unread = conv.getUnreadCount() + 1;
+        conv.setUnreadCount(unread);
+        NewCount.setGroupNewCount(conv.cid, unread);
+
         conv.message = imsg;
         updateConversationDetail(conv);
 
@@ -746,10 +797,16 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
     }
 
     private void onGroupMemberAdd(IMessage.GroupNotification notification) {
+        if (notification.member == Token.getInstance().uid) {
+            GroupDB.getInstance().joinGroup(notification.groupID);
+        }
         GroupDB.getInstance().addGroupMember(notification.groupID, notification.member);
     }
 
     private void onGroupMemberLeave(IMessage.GroupNotification notification) {
+        if (notification.member == Token.getInstance().uid) {
+            GroupDB.getInstance().leaveGroup(notification.groupID);
+        }
         GroupDB.getInstance().removeGroupMember(notification.groupID, notification.member);
     }
 
@@ -792,13 +849,19 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             conversation.message = imsg;
             updateConversationDetail(conversation);
         } else if (notification.name.equals(PeerMessageActivity.CLEAR_MESSAGES)) {
-            Long peerUID = (Long)notification.obj;
+            Long peerUID = (Long) notification.obj;
             Conversation conversation = findConversation(peerUID, Conversation.CONVERSATION_PEER);
             if (conversation != null) {
                 conversations.remove(conversation);
                 adapter.notifyDataSetChanged();
             }
-
+        } else if (notification.name.equals(PeerMessageActivity.CLEAR_NEW_MESSAGES)) {
+            Long peerUID = (Long) notification.obj;
+            Conversation conversation = findConversation(peerUID, Conversation.CONVERSATION_PEER);
+            if (conversation != null) {
+                conversation.setUnreadCount(0);
+                NewCount.setNewCount(conversation.cid, 0);
+            }
         } else if (notification.name.equals(GroupMessageActivity.SEND_MESSAGE_NAME)) {
             IMessage imsg = (IMessage) notification.obj;
             Conversation conversation = findConversation(imsg.receiver, Conversation.CONVERSATION_GROUP);
@@ -814,6 +877,13 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             if (conversation != null) {
                 conversations.remove(conversation);
                 adapter.notifyDataSetChanged();
+            }
+        } else if (notification.name.equals(GroupMessageActivity.CLEAR_NEW_MESSAGES)) {
+            Long groupID = (Long)notification.obj;
+            Conversation conversation = findConversation(groupID, Conversation.CONVERSATION_GROUP);
+            if (conversation != null) {
+                conversation.setUnreadCount(0);
+                NewCount.setGroupNewCount(conversation.cid, 0);
             }
         }
     }

@@ -28,6 +28,10 @@ public class GroupDB {
         return String.format("groups_%d_disbanded", groupID);
     }
 
+    private String leavedKey(long groupID) {
+        return String.format("groups_%d_leaved", groupID);
+    }
+
     private String groupMemberKey(long groupID, long uid) {
         return String.format("group_member_%d_%d", groupID, uid);
     }
@@ -135,6 +139,43 @@ public class GroupDB {
             return null;
         }
     }
+
+    //退出群的标志
+    public void leaveGroup(long groupID) {
+        LevelDB db = LevelDB.getDefaultDB();
+
+        String k3 = leavedKey(groupID);
+        try {
+            db.setLong(k3, 1);
+        } catch (Exception e) {
+
+        }
+    }
+
+    //清空退出群的标志
+    public void joinGroup(long groupID) {
+        LevelDB db = LevelDB.getDefaultDB();
+
+        String k3 = leavedKey(groupID);
+        try {
+            db.setLong(k3, 0);
+        } catch (Exception e) {
+
+        }
+    }
+
+    public boolean isLeaved(long groupID) {
+        LevelDB db = LevelDB.getDefaultDB();
+
+        String k3 = leavedKey(groupID);
+        try {
+            long leaved = db.getLong(k3);
+            return (leaved == 1);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
     public boolean disbandGroup(long groupID) {
         LevelDB db = LevelDB.getDefaultDB();
 

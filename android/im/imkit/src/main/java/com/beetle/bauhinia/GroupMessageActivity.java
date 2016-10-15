@@ -50,6 +50,8 @@ public class GroupMessageActivity extends MessageActivity implements
     protected long groupID;
     protected String groupName;
 
+
+
     public GroupMessageActivity() {
         super();
         isShowUserName = true;

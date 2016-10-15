@@ -123,6 +123,8 @@ public class MessageActivity extends BaseActivity implements
     protected MyItemClickListener extendMenuItemClickListener;
     protected EaseChatInputMenu inputMenu;
 
+    protected TextView hintView;
+
     /**
      * 扩展菜单栏item点击事件
      *
@@ -175,6 +177,9 @@ public class MessageActivity extends BaseActivity implements
 
     //加载消息发送者的名称和头像信息
     protected void loadUserName(IMessage msg) {
+        if (msg.sender == 0) {
+            return;
+        }
         User u = getUser(msg.sender);
 
         msg.setSenderAvatar(u.avatarURL);
@@ -210,6 +215,7 @@ public class MessageActivity extends BaseActivity implements
         Log.i(TAG, "record file name:" + recordFileName);
 
         listview = (ListView)findViewById(R.id.list_view);
+        hintView = (TextView)findViewById(R.id.hint);
 
         extendMenuItemClickListener = new MyItemClickListener();
         inputMenu = (EaseChatInputMenu)findViewById(R.id.input_menu);

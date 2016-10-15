@@ -29,7 +29,7 @@ public class ReactInstance {
                 .addPackage(new GroupSettingPackage())
                 .addPackage(new ReactNativeDialogsPackage())
                 .setUseDeveloperSupport(BuildConfig.DEBUG)
-                .setInitialLifecycleState(LifecycleState.RESUMED)
+                .setInitialLifecycleState(LifecycleState.BEFORE_CREATE)
                 .build();
 
         if (!mReactInstanceManager.hasStartedCreatingInitialContext()) {

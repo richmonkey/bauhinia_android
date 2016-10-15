@@ -10,6 +10,7 @@ import android.widget.TextView;
 
 import com.beetle.bauhinia.db.Conversation;
 import com.beetle.bauhinia.db.IMessage;
+import com.beetle.bauhinia.tools.TimeUtil;
 import com.squareup.picasso.Picasso;
 
 import java.beans.PropertyChangeEvent;
@@ -52,6 +53,10 @@ public class ConversationView extends FrameLayout implements PropertyChangeListe
         if (!TextUtils.isEmpty(c.getAvatar())) {
             avatar = c.getAvatar();
         }
+
+        String ts = TimeUtil.formatTimeBase(c.message.timestamp);
+        tv = (TextView)findViewById(R.id.timestamp);
+        tv.setText(ts);
 
         ImageView imageView = (ImageView) this.findViewById(R.id.header);
         Picasso.with(context)
