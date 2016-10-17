@@ -35,6 +35,8 @@ import com.google.code.p.leveldb.LevelDB;
 
 import java.io.File;
 import java.util.List;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
@@ -144,6 +146,21 @@ public class IMApplication extends Application implements Application.ActivityLi
             }
         }
         return false;
+    }
+
+    private int getAppImportance() {
+        Context context = getApplicationContext();
+        int pid = android.os.Process.myPid();
+        Log.i(TAG, "pid:" + pid + "package name:" + context.getPackageName());
+        ActivityManager activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        List<ActivityManager.RunningAppProcessInfo> appProcesses = activityManager.getRunningAppProcesses();
+        for (ActivityManager.RunningAppProcessInfo appProcess : appProcesses) {
+            Log.i(TAG, "package name:" + appProcess.processName + " importance:" + appProcess.importance + " pid:" + appProcess.pid);
+            if (pid == appProcess.pid) {
+                return appProcess.importance;
+            }
+        }
+        return 0;
     }
 
     private final static String TAG = "beetle";

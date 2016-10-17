@@ -137,6 +137,17 @@
             </intent-filter>
         </receiver>
 
+
+
+        <service
+            android:name=".service.ForegroundService">
+        </service>
+
+        <service
+            android:name=".service.AssistService">
+        </service>
+
+
         <activity
             android:name=".activity.VerifyActivity"
             android:label="@string/title_activity_verify" />

@@ -19,6 +19,7 @@ import android.view.ViewGroup;
 import android.widget.*;
 
 import com.beetle.bauhinia.model.NewCount;
+import com.beetle.bauhinia.service.ForegroundService;
 import com.google.gson.Gson;
 
 import com.beetle.bauhinia.activity.GroupCreatorActivity;
@@ -265,6 +266,10 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
                         Log.i(TAG, "get latest version fail:" + throwable.getMessage());
                     }
                 });
+
+        //keep app foreground state
+        Intent service = new Intent(this, ForegroundService.class);
+        startService(service);
     }
 
     @Override
