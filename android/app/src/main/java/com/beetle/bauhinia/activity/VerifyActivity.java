@@ -14,6 +14,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.beetle.bauhinia.R;
+import com.beetle.bauhinia.model.Profile;
 import com.beetle.im.IMService;
 import com.beetle.bauhinia.IMApplication;
 import com.beetle.bauhinia.MainActivity;
@@ -77,18 +78,20 @@ public class VerifyActivity extends AccountActivity implements TextView.OnEditor
         IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.postAuthToken(postAuthToken)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<Token>() {
+                .subscribe(new Action1<IMHttp.Token>() {
                     @Override
-                    public void call(Token token) {
+                    public void call(IMHttp.Token token) {
                         dialog.dismiss();
 
                         Token t = Token.getInstance();
                         t.accessToken = token.accessToken;
                         t.refreshToken = token.refreshToken;
                         t.expireTimestamp = token.expireTimestamp;
-                        t.uid = token.uid;
-
                         t.save();
+
+                        Profile profile = Profile.getInstance();
+                        profile.uid = token.uid;
+                        profile.save(VerifyActivity.this);
 
                         User u = new User();
                         u.uid = token.uid;

@@ -17,6 +17,7 @@ import com.beetle.bauhinia.db.GroupMessageDB;
 import com.beetle.bauhinia.db.GroupMessageHandler;
 import com.beetle.bauhinia.db.PeerMessageDB;
 import com.beetle.bauhinia.db.PeerMessageHandler;
+import com.beetle.bauhinia.model.Profile;
 import com.beetle.bauhinia.react.ReactInstance;
 import com.beetle.im.IMService;
 import com.beetle.bauhinia.api.IMHttp;
@@ -88,7 +89,7 @@ public class IMApplication extends Application implements Application.ActivityLi
                 deviceTokenStr = BinAscii.bin2Hex(tokenArray);
                 Log.i(TAG, "device token:" + deviceTokenStr);
                 IMApplication.this.deviceToken = deviceTokenStr;
-                if (Token.getInstance().uid > 0) {
+                if (Profile.getInstance().uid > 0) {
                     IMApplication.this.bindDeviceToken(deviceTokenStr);
                 }
             }
@@ -111,10 +112,13 @@ public class IMApplication extends Application implements Application.ActivityLi
         im.setGroupMessageHandler(GroupMessageHandler.getInstance());
         im.registerConnectivityChangeReceiver(getApplicationContext());
 
+        Profile profile = Profile.getInstance();
+        profile.load(this);
+
         //already login
-        if (Token.getInstance().uid > 0) {
+        if (Profile.getInstance().uid > 0) {
             im.setToken(Token.getInstance().accessToken);
-            im.setUID(Token.getInstance().uid);
+            im.setUID(Profile.getInstance().uid);
             IMHttpAPI.setToken(Token.getInstance().accessToken);
         }
         initErrorHandler();
@@ -193,7 +197,7 @@ public class IMApplication extends Application implements Application.ActivityLi
         ++started;
 
         if (started - stopped == 1 ) {
-            if (Token.getInstance().uid > 0) {
+            if (Profile.getInstance().uid > 0) {
                 if (stopped == 0) {
                     Log.i(TAG, "app startup");
                 } else {
@@ -239,9 +243,9 @@ public class IMApplication extends Application implements Application.ActivityLi
         IMHttp imHttp = IMHttpFactory.Singleton();
         imHttp.postAuthRefreshToken(refreshToken)
                 .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new Action1<Token>() {
+                .subscribe(new Action1<IMHttp.Token>() {
                     @Override
-                    public void call(Token token) {
+                    public void call(IMHttp.Token token) {
                         onTokenRefreshed(token);
                     }
                 }, new Action1<Throwable>() {
@@ -252,7 +256,7 @@ public class IMApplication extends Application implements Application.ActivityLi
                 });
     }
 
-    protected void onTokenRefreshed(Token token) {
+    protected void onTokenRefreshed(IMHttp.Token token) {
         Token t = Token.getInstance();
         t.accessToken = token.accessToken;
         t.refreshToken = token.refreshToken;

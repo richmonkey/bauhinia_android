@@ -45,9 +45,11 @@ public class PeerMessageActivity extends MessageActivity implements
     protected long receiver;
 
     protected long currentUID;
+    protected String avatar;
+
     protected long peerUID;
     protected String peerName;
-
+    protected String peerAvatar;
 
 
     @Override
@@ -61,6 +63,12 @@ public class PeerMessageActivity extends MessageActivity implements
             Log.e(TAG, "current uid is 0");
             return;
         }
+
+        avatar = intent.getStringExtra("avatar");
+        if (avatar == null) {
+            avatar = "";
+        }
+
         peerUID = intent.getLongExtra("peer_uid", 0);
         if (peerUID == 0) {
             Log.e(TAG, "peer uid is 0");
@@ -70,6 +78,11 @@ public class PeerMessageActivity extends MessageActivity implements
         if (peerName == null) {
             Log.e(TAG, "peer name is null");
             return;
+        }
+
+        peerAvatar = intent.getStringExtra("peer_avatar");
+        if (peerAvatar == null) {
+            peerAvatar = "";
         }
 
         Log.i(TAG, "local id:" + currentUID +  "peer id:" + peerUID);
@@ -106,6 +119,26 @@ public class PeerMessageActivity extends MessageActivity implements
         AudioDownloader.getInstance().removeObserver(this);
     }
 
+    @Override
+    protected User getUser(long uid) {
+        if (uid == currentUID) {
+            User u = new User();
+            u.uid = uid;
+            u.name = "";
+            u.avatarURL = avatar;
+            u.identifier = String.format("%d", uid);
+            return u;
+        } else if (uid == peerUID) {
+            User u = new User();
+            u.uid = uid;
+            u.name = peerName;
+            u.avatarURL = peerAvatar;
+            u.identifier = String.format("%d", uid);
+            return u;
+        }
+        return new User();
+    }
+
     protected void loadConversationData() {
         messages = new ArrayList<IMessage>();
 
@@ -130,6 +163,7 @@ public class PeerMessageActivity extends MessageActivity implements
         }
 
         downloadMessageContent(messages, count);
+        loadUserName(messages, count);
         checkMessageFailureFlag(messages, count);
         resetMessageTimeBase();
     }
@@ -172,6 +206,7 @@ public class PeerMessageActivity extends MessageActivity implements
         }
         if (count > 0) {
             downloadMessageContent(messages, count);
+            loadUserName(messages, count);
             checkMessageFailureFlag(messages, count);
             resetMessageTimeBase();
             adapter.notifyDataSetChanged();
@@ -225,6 +260,7 @@ public class PeerMessageActivity extends MessageActivity implements
         imsg.isOutgoing = (msg.sender == this.currentUID);
 
         downloadMessageContent(imsg);
+        loadUserName(imsg);
 
         insertMessage(imsg);
     }

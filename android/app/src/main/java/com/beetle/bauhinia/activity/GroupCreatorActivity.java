@@ -16,6 +16,7 @@ import com.beetle.bauhinia.model.ContactDB;
 import com.beetle.bauhinia.model.Group;
 import com.beetle.bauhinia.model.GroupDB;
 import com.beetle.bauhinia.model.PhoneNumber;
+import com.beetle.bauhinia.model.Profile;
 import com.beetle.bauhinia.model.UserDB;
 import com.facebook.react.LifecycleState;
 import com.facebook.react.ReactInstanceManager;
@@ -110,7 +111,7 @@ public class GroupCreatorActivity extends Activity implements DefaultHardwareBac
                 .build();
 
         Bundle props = new Bundle();
-        props.putLong("uid", Token.getInstance().uid);
+        props.putLong("uid", Profile.getInstance().uid);
         props.putString("token", Token.getInstance().accessToken);
         props.putString("url", Config.SDK_API_URL);
         ArrayList<Bundle> users = new ArrayList<Bundle>();

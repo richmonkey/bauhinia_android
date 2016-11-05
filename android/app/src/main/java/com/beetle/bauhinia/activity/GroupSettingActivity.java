@@ -17,6 +17,7 @@ import com.beetle.bauhinia.model.ContactDB;
 import com.beetle.bauhinia.model.Group;
 import com.beetle.bauhinia.model.GroupDB;
 import com.beetle.bauhinia.model.PhoneNumber;
+import com.beetle.bauhinia.model.Profile;
 import com.beetle.bauhinia.model.UserDB;
 import com.beetle.bauhinia.react.GroupSettingModule;
 import com.beetle.bauhinia.react.ReactInstance;
@@ -84,8 +85,8 @@ public class GroupSettingActivity extends Activity implements DefaultHardwareBac
         props.putBoolean("disbanded", group.disbanded);
         props.putString("topic", group.topic);
         props.putLong("master_id", group.master);
-        props.putBoolean("is_master", group.master == Token.getInstance().uid);
-        props.putLong("uid", Token.getInstance().uid);
+        props.putBoolean("is_master", group.master == Profile.getInstance().uid);
+        props.putLong("uid", Profile.getInstance().uid);
         props.putString("token", Token.getInstance().accessToken);
         props.putString("url", Config.SDK_API_URL);
         props.putInt("hash_code", hashCode());

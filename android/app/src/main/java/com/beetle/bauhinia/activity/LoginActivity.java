@@ -16,6 +16,7 @@ import com.beetle.bauhinia.Token;
 import com.beetle.bauhinia.api.IMHttp;
 import com.beetle.bauhinia.api.IMHttpFactory;
 import com.beetle.bauhinia.api.types.Code;
+import com.beetle.bauhinia.model.Profile;
 
 import butterknife.ButterKnife;
 import butterknife.InjectView;
@@ -40,7 +41,7 @@ public class LoginActivity extends AccountActivity implements TextView.OnEditorA
         Token t = Token.getInstance();
         Log.i(TAG, "access token:" + t.accessToken);
         if (t.accessToken != null) {
-            Log.i(TAG, "current uid:" + t.uid);
+            Log.i(TAG, "current uid:" + Profile.getInstance().uid);
             Intent intent = new Intent(LoginActivity.this, MainActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             startActivity(intent);

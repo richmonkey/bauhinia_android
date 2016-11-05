@@ -25,6 +25,7 @@ import java.util.ArrayList;
 public class AppGroupMessageActivity extends GroupMessageActivity {
     private boolean leaved = false;
 
+
     @Override
     protected User getUser(long uid) {
         if (uid == 0) {
@@ -39,7 +40,7 @@ public class AppGroupMessageActivity extends GroupMessageActivity {
         }
         User user = new User();
         user.name = u.name;
-        u.avatar = "";
+        user.avatarURL = u.avatar;
         return user;
     }
 

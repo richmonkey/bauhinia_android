@@ -20,6 +20,7 @@ import android.widget.*;
 
 import com.beetle.bauhinia.db.SyncKeyHandler;
 import com.beetle.bauhinia.model.NewCount;
+import com.beetle.bauhinia.model.Profile;
 import com.beetle.bauhinia.service.ForegroundService;
 import com.google.gson.Gson;
 
@@ -199,7 +200,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra("group_id", group_id);
             intent.putExtra("group_name", groupName);
-            intent.putExtra("current_uid", Token.getInstance().uid);
+            intent.putExtra("current_uid", Profile.getInstance().uid);
             startActivity(intent);
         }
     }
@@ -232,7 +233,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         im.addObserver(this);
         im.addPeerObserver(this);
         im.addGroupObserver(this);
-        im.setUID(Token.getInstance().uid);
+        im.setUID(Profile.getInstance().uid);
 
         SyncKeyHandler handler = new SyncKeyHandler(this.getApplicationContext(), "sync_key");
         handler.load();
@@ -615,17 +616,19 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
                             long id) {
         Conversation conv = conversations.get(position);
         Log.i(TAG, "conv:" + conv.getName());
+        Profile profile = Profile.getInstance();
 
         if (conv.type == Conversation.CONVERSATION_PEER) {
-
             User user = getUser(conv.cid);
-
             Intent intent = new Intent(this, PeerMessageActivity.class);
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra("peer_uid", conv.cid);
             intent.putExtra("peer_name", conv.getName());
+            intent.putExtra("peer_avatar", conv.getAvatar());
             intent.putExtra("peer_up_timestamp", user.up_timestamp);
-            intent.putExtra("current_uid", Token.getInstance().uid);
+            intent.putExtra("current_uid", profile.uid);
+            intent.putExtra("avatar", profile.avatar);
+
             startActivity(intent);
         } else {
             Log.i(TAG, "group conversation");
@@ -634,7 +637,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
             intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             intent.putExtra("group_id", conv.cid);
             intent.putExtra("group_name", conv.getName());
-            intent.putExtra("current_uid", Token.getInstance().uid);
+            intent.putExtra("current_uid", profile.uid);
             startActivity(intent);
 
 
@@ -662,7 +665,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         imsg.setContent(msg.content);
 
         long cid = 0;
-        if (msg.sender == Token.getInstance().uid) {
+        if (msg.sender == Profile.getInstance().uid) {
             cid = msg.receiver;
         } else {
             cid = msg.sender;
@@ -678,7 +681,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         }
         conversation.message = imsg;
 
-        if (msg.sender != Token.getInstance().uid) {
+        if (msg.sender != Profile.getInstance().uid) {
             int unread = conversation.getUnreadCount() + 1;
             conversation.setUnreadCount(unread);
             NewCount.setNewCount(conversation.cid, unread);
@@ -745,7 +748,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         }
         conversation.message = imsg;
 
-        if (msg.sender != Token.getInstance().uid) {
+        if (msg.sender != Profile.getInstance().uid) {
             int unread = conversation.getUnreadCount() + 1;
             conversation.setUnreadCount(unread);
             NewCount.setGroupNewCount(conversation.cid, unread);
@@ -827,14 +830,14 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
     }
 
     private void onGroupMemberAdd(IMessage.GroupNotification notification) {
-        if (notification.member == Token.getInstance().uid) {
+        if (notification.member == Profile.getInstance().uid) {
             GroupDB.getInstance().joinGroup(notification.groupID);
         }
         GroupDB.getInstance().addGroupMember(notification.groupID, notification.member);
     }
 
     private void onGroupMemberLeave(IMessage.GroupNotification notification) {
-        if (notification.member == Token.getInstance().uid) {
+        if (notification.member == Profile.getInstance().uid) {
             GroupDB.getInstance().leaveGroup(notification.groupID);
         }
         GroupDB.getInstance().removeGroupMember(notification.groupID, notification.member);
@@ -848,7 +851,7 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         if (imsg.content.getType() != IMessage.MessageType.MESSAGE_GROUP_NOTIFICATION) {
             return;
         }
-        long currentUID = Token.getInstance().uid;
+        long currentUID = Profile.getInstance().uid;
         GroupNotification notification = (GroupNotification)imsg.content;
         if (notification.notificationType == GroupNotification.NOTIFICATION_GROUP_CREATED) {
             if (notification.master == currentUID) {

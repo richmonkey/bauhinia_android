@@ -1,6 +1,6 @@
 package com.beetle.bauhinia.api;
 
-import com.beetle.bauhinia.Token;
+
 import com.beetle.bauhinia.api.body.PostAuthRefreshToken;
 import com.beetle.bauhinia.api.body.PostAuthToken;
 import com.beetle.bauhinia.api.body.PostDeviceToken;
@@ -12,6 +12,7 @@ import com.beetle.bauhinia.api.types.Code;
 import com.beetle.bauhinia.api.types.Image;
 import com.beetle.bauhinia.api.types.User;
 import com.beetle.bauhinia.api.types.Version;
+import com.google.gson.annotations.SerializedName;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -33,6 +34,19 @@ import rx.Observable;
  * Created by tsung on 10/10/14.
  */
 public interface IMHttp {
+
+    public static class Token {
+        @SerializedName("access_token")
+        public String accessToken;
+        @SerializedName("refresh_token")
+        public String refreshToken;
+        @SerializedName("expires_in")
+        public int expireTimestamp;
+
+        public long uid;
+    }
+
+
     @GET("/version/android")
     Observable<Version> getLatestVersion();
 

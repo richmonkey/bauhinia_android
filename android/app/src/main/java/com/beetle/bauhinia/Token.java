@@ -22,7 +22,6 @@ public class Token {
     public String refreshToken;
     @SerializedName("expires_in")
     public int expireTimestamp;
-    public long uid;
 
     public void save() {
         LevelDB db = LevelDB.getDefaultDB();
@@ -30,7 +29,6 @@ public class Token {
             db.set("access_token", accessToken);
             db.set("refresh_token", refreshToken);
             db.setLong("token_expire", expireTimestamp);
-            db.setLong("token_uid", uid);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -42,7 +40,6 @@ public class Token {
             accessToken = db.get("access_token");
             refreshToken = db.get("refresh_token");
             expireTimestamp = (int)db.getLong("token_expire");
-            uid = db.getLong("token_uid");
         } catch(Exception e) {
             e.printStackTrace();
         }
