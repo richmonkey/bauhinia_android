@@ -32,10 +32,9 @@ public class CustomerOutbox extends Outbox {
         msg.customerID = cm.customerID;
         msg.storeID = cm.storeID;
         msg.sellerID = cm.sellerID;
-        msg.content = IMessage.newImage(url).getRaw();
 
-
-
+        IMessage.Image image = (IMessage.Image)imsg.content;
+        msg.content = IMessage.newImage(url, image.width, image.height, image.getUUID()).getRaw();
 
         IMService im = IMService.getInstance();
         im.sendCustomerMessage(msg);
@@ -43,10 +42,7 @@ public class CustomerOutbox extends Outbox {
 
     @Override
     protected void sendAudioMessage(IMessage imsg, String url) {
-
         ICustomerMessage cm = (ICustomerMessage)imsg;
-
-
         IMessage.Audio audio = (IMessage.Audio)imsg.content;
 
         CustomerMessage msg = new CustomerMessage();
@@ -56,9 +52,7 @@ public class CustomerOutbox extends Outbox {
         msg.storeID = cm.storeID;
         msg.sellerID = cm.sellerID;
 
-        msg.content = IMessage.newAudio(url, audio.duration).getRaw();
-
-
+        msg.content = IMessage.newAudio(url, audio.duration, audio.getUUID()).getRaw();
 
         IMService im = IMService.getInstance();
         im.sendCustomerMessage(msg);

@@ -1,6 +1,5 @@
 package com.beetle.bauhinia.db;
 
-import com.beetle.im.BytePacket;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -9,9 +8,9 @@ import com.google.gson.JsonObject;
 
 import java.beans.PropertyChangeListener;
 import java.beans.PropertyChangeSupport;
-import java.io.UnsupportedEncodingException;
 import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.UUID;
 
 /**
  * Created by houxh on 14-7-22.
@@ -22,11 +21,13 @@ public class IMessage {
 
     public static final String TEXT = "text";
     public static final String IMAGE = "image";
+    public static final String IMAGE2 = "image2";
     public static final String LOCATION = "location";
     public static final String AUDIO = "audio";
     public static final String NOTIFICATION = "notification";
     public static final String LINK = "link";
     public static final String ATTACHMENT = "attachment";
+    public static final String HEADLINE = "headline";
     public static final String TIMEBASE = "timebase";
 
     public static enum MessageType {
@@ -38,6 +39,7 @@ public class IMessage {
         MESSAGE_GROUP_NOTIFICATION,
         MESSAGE_LINK,
         MESSAGE_ATTACHMENT,
+        MESSAGE_HEADLINE,
         MESSAGE_TIME_BASE //虚拟的消息，不会存入磁盘
     }
 
@@ -45,21 +47,26 @@ public class IMessage {
 
     public static Text newText(String text) {
         Text t = new Text();
+        String uuid = UUID.randomUUID().toString();
+
         JsonObject textContent = new JsonObject();
         textContent.addProperty(TEXT, text);
+        textContent.addProperty("uuid", uuid);
         t.raw = textContent.toString();
         t.text = text;
         return t;
     }
 
-    public static Audio newAudio(String url, long duration) {
+    public static Audio newAudio(String url, long duration, String uuid) {
         Audio audio = new Audio();
+
 
         JsonObject content = new JsonObject();
         JsonObject audioJson = new JsonObject();
         audioJson.addProperty("duration", duration);
         audioJson.addProperty("url", url);
         content.add(AUDIO, audioJson);
+        content.addProperty("uuid", uuid);
         audio.raw = content.toString();
 
         audio.duration = duration;
@@ -67,22 +74,43 @@ public class IMessage {
         return audio;
     }
 
-    public static Image newImage(String url) {
+    public static Audio newAudio(String url, long duration) {
+        String uuid = UUID.randomUUID().toString();
+        return newAudio(url, duration, uuid);
+    }
+
+    public static Image newImage(String url, int width, int height, String uuid) {
         Image image = new Image();
+
         JsonObject content = new JsonObject();
+        //兼容性
         content.addProperty(IMAGE, url);
+        JsonObject obj = new JsonObject();
+        obj.addProperty("url", url);
+        obj.addProperty("width", width);
+        obj.addProperty("height", height);
+        content.add(IMAGE2, obj);
+        content.addProperty("uuid", uuid);
         image.raw = content.toString();
-        image.image = url;
+        image.url = url;
         return image;
+    }
+
+    public static Image newImage(String url, int width, int height) {
+        String uuid = UUID.randomUUID().toString();
+        return newImage(url, width, height, uuid);
     }
 
     public static Location newLocation(float latitude, float longitude) {
         Location location = new Location();
+        String uuid = UUID.randomUUID().toString();
+
         JsonObject content = new JsonObject();
         JsonObject locationJson = new JsonObject();
         locationJson.addProperty("latitude", latitude);
         locationJson.addProperty("longitude", longitude);
         content.add(LOCATION, locationJson);
+        content.addProperty("uuid", uuid);
         location.raw = content.toString();
         location.longitude = longitude;
         location.latitude = latitude;
@@ -100,6 +128,18 @@ public class IMessage {
         attachment.address = address;
         attachment.msg_id = msgLocalID;
         return attachment;
+    }
+
+    public static Headline newHeadline(String headline) {
+        Headline head = new Headline();
+        JsonObject content = new JsonObject();
+        JsonObject headlineJson = new JsonObject();
+        headlineJson.addProperty("headline", headline);
+        content.add(HEADLINE, headlineJson);
+        head.raw = content.toString();
+        head.headline = headline;
+        head.description = headline;
+        return head;
     }
 
     public static TimeBase newTimeBase(int timestamp) {
@@ -164,7 +204,8 @@ public class IMessage {
     }
 
     public abstract static class MessageContent {
-        public String raw;
+        protected String raw;
+        protected String uuid;
 
         public MessageType getType() {
             return MessageType.MESSAGE_UNKNOWN;
@@ -172,6 +213,14 @@ public class IMessage {
 
         public String getRaw() {
             return raw;
+        }
+
+        public String getUUID() {
+            return uuid;
+        }
+
+        public void setUUID(String uuid) {
+            this.uuid = uuid;
         }
     }
 
@@ -183,7 +232,9 @@ public class IMessage {
     }
 
     public static class Image extends MessageContent {
-        public String image;
+        public String url;
+        public int width;
+        public int height;
         public MessageType getType() {
             return MessageType.MESSAGE_IMAGE;
         }
@@ -204,14 +255,33 @@ public class IMessage {
         public MessageType getType() { return MessageType.MESSAGE_LOCATION; }
     }
 
-    public static class TimeBase extends MessageContent {
+    public static abstract class Notification extends MessageContent {
+        public String description;
+
+        public String getDescription() {
+            return this.description;
+        }
+    }
+
+    public static class TimeBase extends Notification {
         public int timestamp;
         public MessageType getType() {
             return MessageType.MESSAGE_TIME_BASE;
         }
     }
 
-    public static class GroupNotification extends MessageContent {
+    public static class Headline extends Notification {
+        public String headline;
+
+        public String getDescription() {
+            return this.headline;
+        }
+        public MessageType getType() {
+            return MessageType.MESSAGE_HEADLINE;
+        }
+    }
+
+    public static class GroupNotification extends Notification {
         public static final int NOTIFICATION_GROUP_CREATED = 1;//群创建
         public static final int NOTIFICATION_GROUP_DISBAND = 2;//群解散
         public static final int NOTIFICATION_GROUP_MEMBER_ADDED = 3;//群成员加入
@@ -225,7 +295,6 @@ public class IMessage {
 
         public int notificationType;
 
-        public String description;
         public long groupID;
 
         public int timestamp;//单位:秒
@@ -263,8 +332,12 @@ public class IMessage {
             JsonObject element = gson.fromJson(raw, JsonObject.class);
             if (element.has(TEXT)) {
                 content = gson.fromJson(raw, Text.class);
-            } else if (element.has(IMAGE)){
-                content = gson.fromJson(raw, Image.class);
+            } else if (element.has(IMAGE2)) {
+                content = gson.fromJson(element.get(IMAGE2), Image.class);
+            } else if (element.has(IMAGE)) {
+                Image image = new Image();
+                image.url = element.get(IMAGE).getAsString();
+                content = image;
             } else if (element.has(AUDIO)) {
                 content = gson.fromJson(element.get(AUDIO), Audio.class);
             } else if (element.has(NOTIFICATION)) {
@@ -275,14 +348,21 @@ public class IMessage {
                 content = gson.fromJson(element.get(ATTACHMENT), Attachment.class);
             } else if (element.has(LINK)) {
                 content = gson.fromJson(element.get(LINK), Link.class);
+            } else if (element.has(HEADLINE)) {
+                content = gson.fromJson(element.get(HEADLINE), Headline.class);
             } else {
                 content = new Unknown();
+            }
+            if (element.has("uuid")) {
+                content.setUUID(element.get("uuid").getAsString());
             }
         } catch (Exception e) {
             content = new Unknown();
         }
 
         content.raw = raw;
+
+
     }
 
     public void setContent(MessageContent content) {

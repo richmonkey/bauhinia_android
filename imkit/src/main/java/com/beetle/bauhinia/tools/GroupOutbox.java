@@ -30,7 +30,9 @@ public class GroupOutbox extends Outbox{
         IMMessage msg = new IMMessage();
         msg.sender = imsg.sender;
         msg.receiver = imsg.receiver;
-        msg.content = IMessage.newImage(url).getRaw();
+
+        IMessage.Image image = (IMessage.Image)imsg.content;
+        msg.content = IMessage.newImage(url, image.width, image.height, image.getUUID()).getRaw();
         msg.msgLocalID = imsg.msgLocalID;
 
         IMService im = IMService.getInstance();
@@ -45,7 +47,7 @@ public class GroupOutbox extends Outbox{
         msg.sender = imsg.sender;
         msg.receiver = imsg.receiver;
         msg.msgLocalID = imsg.msgLocalID;
-        msg.content = IMessage.newAudio(url, audio.duration).getRaw();
+        msg.content = IMessage.newAudio(url, audio.duration, audio.getUUID()).getRaw();
 
         IMService im = IMService.getInstance();
         im.sendGroupMessage(msg);
