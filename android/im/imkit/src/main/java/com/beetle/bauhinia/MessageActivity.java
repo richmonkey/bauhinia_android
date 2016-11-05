@@ -334,7 +334,6 @@ public class MessageActivity extends BaseActivity implements
         public static int TEXT = 8;
         public static int NOTIFICATION = 10;
         public static int LINK = 12;
-        public static int TIMEBASE = 14;
     }
 
     class ChatAdapter extends BaseAdapter implements ContentTypes {
@@ -373,10 +372,10 @@ public class MessageActivity extends BaseActivity implements
                 media = AUDIO;
             } else if (msg.content instanceof IMessage.Location) {
                 media = LOCATION;
-            } else if (msg.content instanceof IMessage.GroupNotification) {
+            } else if (msg.content instanceof IMessage.GroupNotification ||
+                    msg.content instanceof IMessage.TimeBase ||
+                    msg.content instanceof IMessage.Headline) {
                 media = NOTIFICATION;
-            } else if (msg.content instanceof IMessage.TimeBase) {
-                media = TIMEBASE;
             } else if (msg.content instanceof IMessage.Link) {
                 media = LINK;
             } else {
@@ -386,11 +385,9 @@ public class MessageActivity extends BaseActivity implements
             return media;
         }
 
-
-
         @Override
         public int getViewTypeCount() {
-            return 16;
+            return 14;
         }
 
         @Override
@@ -409,17 +406,16 @@ public class MessageActivity extends BaseActivity implements
                     case MESSAGE_TEXT:
                         rowView = new MessageTextView(MessageActivity.this, !msg.isOutgoing, isShowUserName);
                         break;
-                    case MESSAGE_GROUP_NOTIFICATION:
-                        rowView = new MessageNotificationView(MessageActivity.this);
-                        break;
                     case MESSAGE_LOCATION:
                         rowView = new MessageLocationView(MessageActivity.this, !msg.isOutgoing, isShowUserName);
                         break;
-                    case MESSAGE_TIME_BASE:
-                        rowView = new MessageTimeBaseView(MessageActivity.this);
-                        break;
                     case MESSAGE_LINK:
                         rowView = new MessageLinkView(MessageActivity.this, !msg.isOutgoing, isShowUserName);
+                        break;
+                    case MESSAGE_GROUP_NOTIFICATION:
+                    case MESSAGE_TIME_BASE:
+                    case MESSAGE_HEADLINE:
+                        rowView = new MessageNotificationView(MessageActivity.this);
                         break;
                     default:
                         rowView = new MessageTextView(MessageActivity.this, !msg.isOutgoing, isShowUserName);
@@ -482,14 +478,7 @@ public class MessageActivity extends BaseActivity implements
                     });
                 }
             }
-
-            if (msg.content.getType() == IMessage.MessageType.MESSAGE_TIME_BASE) {
-                MessageTimeBaseView timeBaseView = (MessageTimeBaseView)rowView;
-                String s = formatTimeBase(((IMessage.TimeBase)msg.content).timestamp);
-                timeBaseView.setTimeBaseMessage(msg, s);
-            } else {
-                rowView.setMessage(msg, !msg.isOutgoing);
-            }
+            rowView.setMessage(msg);
             return rowView;
         }
     }
@@ -832,6 +821,8 @@ public class MessageActivity extends BaseActivity implements
             //间隔10分钟，添加时间分割线
             if (lastMsg == null || msg.timestamp - lastMsg.timestamp > 10*60) {
                 IMessage.TimeBase timeBase = IMessage.newTimeBase(msg.timestamp);
+                String s = formatTimeBase(timeBase.timestamp);
+                timeBase.description = s;
                 IMessage t = new IMessage();
                 t.content = timeBase;
                 t.timestamp = msg.timestamp;
@@ -852,6 +843,8 @@ public class MessageActivity extends BaseActivity implements
         //间隔10分钟，添加时间分割线
         if (lastMsg == null || imsg.timestamp - lastMsg.timestamp > 10*60) {
             IMessage.TimeBase timeBase = IMessage.newTimeBase(imsg.timestamp);
+            String s = formatTimeBase(timeBase.timestamp);
+            timeBase.description = s;
             IMessage t = new IMessage();
             t.content = timeBase;
             t.timestamp = imsg.timestamp;
@@ -906,7 +899,7 @@ public class MessageActivity extends BaseActivity implements
             File t = new File(tpath);
             f.renameTo(t);
 
-            sendMessageContent(IMessage.newImage("file:" + path));
+            sendMessageContent(IMessage.newImage("file:" + path, (int)newWidth, (int)newHeight));
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -1089,7 +1082,7 @@ public class MessageActivity extends BaseActivity implements
             if (msg.msgLocalID == imageMessage.msgLocalID) {
                 position = galleryImages.size();
             }
-            galleryImages.add(new GalleryImage(image.image));
+            galleryImages.add(new GalleryImage(image.url));
         }
         Intent intent = GalleryUI.getCallingIntent(this, galleryImages, position);
         startActivity(intent);
