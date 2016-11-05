@@ -210,4 +210,16 @@ public class GroupDB {
             return false;
         }
     }
+
+    public boolean setGroupMaster(long groupID, long master) {
+        LevelDB db = LevelDB.getDefaultDB();
+
+        String k3 = masterKey(groupID);
+        try {
+            db.setLong(k3, master);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

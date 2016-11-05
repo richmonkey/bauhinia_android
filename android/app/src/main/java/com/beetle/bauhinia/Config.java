@@ -10,7 +10,7 @@ public class Config {
     public static final String DOWNLOAD_URL = "http://bauhinia.gobelieve.io/download";
 
     public static final String SDK_API_URL = "http://api.gobelieve.io";
-    public static final String SDK_IM_HOST = "imnode.gobelieve.io";
+    public static final String SDK_IM_HOST = "imnode2.gobelieve.io";
     public static final String SDK_PUSH_HOST = "pushnode.gobelieve.io";
 
    /* public static final String API_URL = "http://192.168.1.101";

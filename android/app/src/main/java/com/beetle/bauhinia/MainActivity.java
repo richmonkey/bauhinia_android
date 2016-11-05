@@ -18,6 +18,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.*;
 
+import com.beetle.bauhinia.db.SyncKeyHandler;
 import com.beetle.bauhinia.model.NewCount;
 import com.beetle.bauhinia.service.ForegroundService;
 import com.google.gson.Gson;
@@ -61,9 +62,11 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.InputMismatchException;
 import java.util.List;
+import java.util.Map;
 
 import rx.android.schedulers.AndroidSchedulers;
 import rx.functions.Action1;
@@ -230,6 +233,20 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
         im.addPeerObserver(this);
         im.addGroupObserver(this);
         im.setUID(Token.getInstance().uid);
+
+        SyncKeyHandler handler = new SyncKeyHandler(this.getApplicationContext(), "sync_key");
+        handler.load();
+
+        HashMap<Long, Long> groupSyncKeys = handler.getSuperGroupSyncKeys();
+        IMService.getInstance().clearSuperGroupSyncKeys();
+        for (Map.Entry<Long, Long> e : groupSyncKeys.entrySet()) {
+            IMService.getInstance().addSuperGroupSyncKey(e.getKey(), e.getValue());
+            Log.i(TAG, "group id:" + e.getKey() + "sync key:" + e.getValue());
+        }
+        IMService.getInstance().setSyncKey(handler.getSyncKey());
+        Log.i(TAG, "sync key:" + handler.getSyncKey());
+        IMService.getInstance().setSyncKeyHandler(handler);
+
         im.start();
 
         refreshConversations();
@@ -557,8 +574,17 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
                                    JsonObject jobj = g.toJsonTree(obj).getAsJsonObject();
                                    JsonObject data = jobj.getAsJsonObject("data");
                                    String name = data.get("name").getAsString();
-
+                                   Long masterID = data.get("master").getAsLong();
                                    JsonArray members = data.get("members").getAsJsonArray();
+
+                                   if (masterID > 0) {
+                                       GroupDB.getInstance().setGroupMaster(gid, masterID);
+                                   }
+
+
+                                   if (!TextUtils.isEmpty(name)) {
+                                       GroupDB.getInstance().setGroupTopic(gid, name);
+                                   }
 
                                    for (int i = 0; i < members.size(); i++) {
                                        JsonObject m = members.get(i).getAsJsonObject();
@@ -567,7 +593,6 @@ public class MainActivity extends BaseActivity implements IMServiceObserver,
                                    }
 
                                    if (!TextUtils.isEmpty(name)) {
-                                       GroupDB.getInstance().setGroupTopic(gid, name);
                                        Group group = new Group();
                                        group.topic = name;
                                        cb.onGroup(group);
